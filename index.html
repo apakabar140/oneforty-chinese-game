@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>夜市撈魚｜One-Forty 中文小遊戲（骨架原型）</title>
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body {
+    font-family: "PingFang TC","Microsoft JhengHei","Noto Sans TC",Arial,sans-serif;
+    background: linear-gradient(180deg,#1a2a6c,#0f3460 60%,#0a1f3d);
+    min-height: 100vh; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    padding: 16px;
+  }
+  .app { width:100%; max-width:420px; }
+  .screen { position:relative; display:none; background:rgba(255,255,255,0.06); border-radius:20px; padding:24px 20px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+  .quit-btn {
+    position:absolute; top:14px; right:14px; width:28px; height:28px; border-radius:50%;
+    background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center;
+    font-size:14px; cursor:pointer; z-index:5;
+  }
+  .quit-btn:active { background:rgba(255,255,255,0.3); }
+  .screen.active { display:block; }
+  h1 { font-size:22px; text-align:center; margin-bottom:6px; }
+  .sub { text-align:center; opacity:0.8; font-size:13px; margin-bottom:20px; }
+  .hero-icon { text-align:center; font-size:64px; margin-bottom:18px; }
+  .brand-logo { display:block; margin:0 auto 18px; width:150px; height:auto; }
+  .brand-logo.small { width:90px; margin:18px auto 4px; opacity:0.9; }
+  .lang-btn {
+    width:100%; padding:16px; margin-bottom:12px; border:none; border-radius:14px;
+    background:#FCC80E; color:#14314C; font-size:16px; font-weight:bold; cursor:pointer;
+    display:flex; align-items:center; gap:10px; justify-content:center;
+  }
+  .lang-btn:active { transform: scale(0.97); }
+  .hud { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:14px; }
+  .hud .lives { color:#ff6b6b; letter-spacing:2px; }
+  .hud .score { color:#FFB81C; font-weight:bold; }
+  .progress { text-align:center; font-size:12px; opacity:0.7; margin-bottom:10px; }
+  .timer { text-align:center; font-size:12px; opacity:0.75; margin-bottom:10px; color:#10C5DD; font-weight:bold; letter-spacing:1px; }
+  .prompt { background:rgba(255,255,255,0.08); border-radius:14px; padding:16px; text-align:center; font-size:17px; line-height:1.5; margin-bottom:16px; min-height:60px; display:flex; align-items:center; justify-content:center; }
+  .media-box { width:100%; height:120px; border-radius:14px; margin-bottom:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-size:13px; color:#1a2a6c; font-weight:bold; text-align:center; padding:8px; }
+  .media-box.image { background: repeating-linear-gradient(45deg,#a8d8ff,#a8d8ff 10px,#8fc9ff 10px,#8fc9ff 20px); }
+  .media-box.audio { background:#ffe0a3; cursor:pointer; }
+  .media-box.audio:active { transform: scale(0.98); }
+  .speaker { font-size:36px; }
+  .pond { position:relative; background:linear-gradient(180deg,#1c6ea4,#0e4d78); border-radius:16px; padding:14px 10px 10px; margin-bottom:6px; overflow:hidden; }
+  .pond-fish { position:absolute; font-size:16px; opacity:0.35; animation: swim-across linear infinite; pointer-events:none; }
+  @keyframes swim-across {
+    0% { transform: translateX(-30px) scaleX(1); }
+    49% { transform: translateX(340px) scaleX(1); }
+    50% { transform: translateX(340px) scaleX(-1); }
+    99% { transform: translateX(-30px) scaleX(-1); }
+    100% { transform: translateX(-30px) scaleX(1); }
+  }
+  .options { display:grid; grid-template-columns:1fr 1fr; gap:10px; position:relative; z-index:2; }
+  .opt {
+    background:#ffffff; color:#1a2a6c; border:none; border-radius:40% 40% 45% 45% / 60% 60% 40% 40%;
+    padding:16px 8px; font-size:16px; font-weight:bold; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    animation: bob 2.4s ease-in-out infinite;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    position:relative;
+  }
+  .opt:nth-child(2) { animation-delay: 0.3s; }
+  .opt:nth-child(3) { animation-delay: 0.6s; }
+  .opt:nth-child(4) { animation-delay: 0.9s; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  .opt .fish-icon { font-size:15px; }
+  .opt .py { font-size:11px; font-weight:normal; opacity:0.65; }
+  .opt.correct { background:#8fd694; animation:none; }
+  .opt.wrong { background:#ff8b8b; animation:none; }
+  .opt:disabled { cursor:default; }
+  .tutorial-hint {
+    position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    z-index:20; pointer-events:none;
+  }
+  .tutorial-hint .hand { font-size:30px; animation: point-tap 1.1s ease-in-out infinite; }
+  .tutorial-hint .hint-text {
+    background:rgba(0,0,0,0.7); color:#fff; font-size:11px; padding:4px 10px; border-radius:10px; white-space:nowrap;
+  }
+  @keyframes point-tap {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-8px) scale(0.92); }
+  }
+  .net-scoop {
+    position:absolute; top:50%; left:50%; font-size:30px;
+    transform: translate(-50%,-50%) scale(0.4); opacity:0;
+    animation: scoop 0.6s ease-out forwards; pointer-events:none; z-index:10;
+  }
+  @keyframes scoop {
+    0% { transform: translate(-50%,-60%) scale(0.3); opacity:0; }
+    40% { transform: translate(-50%,-50%) scale(1.3); opacity:1; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity:0; }
+  }
+  .footer-note { text-align:center; font-size:11px; opacity:0.5; margin-top:16px; }
+  .trophy { font-size:56px; text-align:center; margin-bottom:8px; }
+  .final-score { text-align:center; font-size:32px; font-weight:bold; color:#FFB81C; margin-bottom:4px; }
+  .final-label { text-align:center; font-size:13px; opacity:0.8; margin-bottom:22px; }
+  .cta-btn {
+    width:100%; padding:16px; border:none; border-radius:14px; background:#EB615A; color:#fff;
+    font-size:16px; font-weight:bold; margin-bottom:10px; cursor:pointer;
+  }
+  .replay-btn {
+    width:100%; padding:14px; border:2px solid rgba(255,255,255,0.4); border-radius:14px; background:transparent; color:#fff;
+    font-size:14px; cursor:pointer;
+  }
+  .lantern { text-align:center; font-size:24px; margin-bottom:8px; letter-spacing:8px; }
+  .leaderboard { margin-top:16px; }
+  .leaderboard-title { text-align:center; font-size:12px; opacity:0.7; margin-bottom:8px; letter-spacing:1px; }
+  .leaderboard-row {
+    display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:10px;
+    background:rgba(255,255,255,0.06); margin-bottom:5px; font-size:13px;
+  }
+  .leaderboard-row .rank { width:20px; font-weight:bold; color:#FFB81C; }
+  .leaderboard-row .id { flex:1; opacity:0.75; font-size:11px; }
+  .leaderboard-row .pts { font-weight:bold; }
+  .leaderboard-row.me { background:rgba(252,200,14,0.18); border:1px solid rgba(252,200,14,0.5); }
+  .back-link { text-align:center; font-size:12px; opacity:0.6; margin-top:14px; cursor:pointer; text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 選語言頁：極簡，只留圖示與語言按鈕 -->
+  <div id="screen-lang" class="screen active">
+    <img class="brand-logo" src="data:image/png;base64,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" alt="One-Forty">
+    <div class="hero-icon">🎣🐟</div>
+    <div class="sub">選擇你的語言 / Pilih bahasa kamu / Pumili ng iyong wika / Chọn ngôn ngữ của bạn</div>
+    <button class="lang-btn" data-lang="id">🇮🇩 Bahasa Indonesia 印尼語</button>
+    <button class="lang-btn" data-lang="ph">🇵🇭 Filipino 菲律賓語</button>
+    <button class="lang-btn" data-lang="vn">🇻🇳 Tiếng Việt 越南語</button>
+  </div>
+
+  <!-- 過場歡迎頁：選完語言後才出現，只顯示該語言版本 -->
+  <div id="screen-intro" class="screen">
+    <div class="lantern">🏮 🏮 🏮</div>
+    <div class="hero-icon">🐠</div>
+    <h1 id="intro-title">夜市撈魚</h1>
+    <div class="sub" id="intro-tagline">中文大挑戰</div>
+    <button class="lang-btn" id="start-btn">▶️ 開始</button>
+    <div class="back-link" id="intro-back-link">←</div>
+  </div>
+
+  <!-- 遊戲頁 -->
+  <div id="screen-game" class="screen">
+    <div class="quit-btn" id="quit-btn">✕</div>
+    <div class="quit-btn" id="sound-toggle" style="right:50px;">🔊</div>
+    <div class="hud">
+      <div class="lives" id="lives">🪣🪣🪣</div>
+      <div class="progress" id="progress" style="margin:0;">Q1/10</div>
+      <div class="score" id="score">⭐ 0</div>
+    </div>
+    <div class="timer" id="timer">⏱️ 00:00</div>
+    <div class="prompt" id="prompt">題目載入中...</div>
+    <div id="media-slot"></div>
+    <div class="pond">
+      <span class="pond-fish" style="top:10%; animation-duration:5.5s;">🐟</span>
+      <span class="pond-fish" style="top:45%; animation-duration:7s; animation-delay:1s;">🐠</span>
+      <span class="pond-fish" style="top:78%; animation-duration:6.2s; animation-delay:2s;">🐟</span>
+      <div class="options" id="options"></div>
+    </div>
+    <div class="footer-note" id="footer-note"></div>
+  </div>
+
+  <!-- 結束頁 -->
+  <div id="screen-end" class="screen">
+    <div class="trophy">🏆</div>
+    <div class="final-score" id="final-score">0</div>
+    <div class="final-label" id="final-label">分 / poin / puntos / điểm</div>
+    <img class="brand-logo small" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAADbCAYAAABDV8fXAAA2VUlEQVR42u2de3xcV3Xvf2vvPaPRY0aSjRMcEhISCGkSXiFPOwG7FMJtINALdml5pJfyKgVuL708C9jhUS4pcIHCLaTQQtP2FpvLqxDeSJDYjhMHEnAICRBISMjDsS3NjDSamb337/5xzsiyLdmyNZKlM+v7+SiRpdHMOfvsvX97rb32WoCiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiKIqiHEtICAnhBhjygK/kZ8nvAdHWUhRF6USh2ADDTbAcguMQHAlzVO/B5D2G0vcgVVgURZk/dII5RoKBNYlIyFr4GV+3Y2UPTKV3om57CybmEWkBoB7BLmvrkGYNze4xrN5dFQFnsGIMhmE27wLXrUOc6XXKEuo/wH5PcTE9UxKCjRBszGjjbwSwEYQAAh1LKiALLRrDiHIl4n6/u3HwJC/hDCHPFODxjDiVwAkCLCPQB0o3gJxI8rwIEISHsC6QMQAjEDxE8h4xcicot9u8/xmWD94lj763tt9nDcFhF4iMiwkJwWYYrEj7+Jr0XofTfy+xNmgtBLAGUeSA/kMIhmGP1T1NXts0fTvTY5qw6bcduzBTAZnvSQwwADh10HPH4KMDwsVCrAFxfiROdwXpRi59QWh9EYgAY7LUIac8NAGMSf9hAVhJ/i8AIhDGCAC/FcGtFLnOOg4jV75FzkZjPzHJ2KBvCfWhLLuDBHUNwmKdAFruzP36D2Hw8+W9GIsGhb21qc+0NbGJIByTa9uxsgdxYjmCL9QBdGWkX7XuZYLCQiGO4inVh6f2mYVqcxWQThGOYdipk1jtxv5TcyY+VyiXk7jA9kgvBEATYIMIARH7BqKASOyN1j5GYjJP6bEHeDWSzszWv0RgbQ5APhWWGhEifiGG347BfNn1jP6wNfFwU7KSkvVLewBMHcTcgR7P/vOFOJfEYwVxGYFoBLto5Y5I3pSrVG5uPSNugl1s9z/1muo7ep9gjb1MIi6OHo8FMAjCimUZkPtEcHM0+OYdvyp//+z16XPdADNfi4P92vqGvjORN8+PAb/PiDMALCMzox0H3TrAqli5VwxuipD/dOXRa2UtJlruu06ywlRA5lE47rwWXY95RP9lxvAKRvyB7ZMeeAAThA8IEBDJKk5a7qn2Xg4IpuJCWNcFQUGABhADfw5yczPi3wrnV+6YXFFuhiw1IZk6cHnd4KNjb3wtYvxj48wpyLecDGlvb7VyjYjEz2hwTfUhXD3w7PKexSIireAHEZDbihfELnk7Ay6zvWIRAHhi8ipNan3mksVI9PwZIz5mzytfLQDbfU/p/ouIIHJ771nRmncS8l9tj+TgATQJhn3WchYxBoBLF2cRiA3eySAfcuePXr1YFyMqIEtp9bu1tCx08QqhvNJ0ye8BAMeJQPjUujDzIBizGfwRQARhXBcMCoI4xgkIv2LAT8i51esmhWQjsBRWUkwmMwKAv7H4V2LNu0wPBjFO+MZ+Vt2BjWFdQQQFINZ4D5t4m7ug/O/cAION4LFyabXuh4T4m/r/1li+2XSJCVWCmOw/+6Rwn+XJ5LmKQQGIE7yuORpfVVhb/Xm73CtThbqxvfhGm5P3mi7pDpV91yZIQsszPbNM2vmIIMR1iU36Eb5bH5FX9Dxj5O5OEREVkLkPqtYeB/mdwf4wGP5CgL80PXIiJgDfYEg73DERjcOJiRE405tYJYH8uoW5Sp468sOWKGIRbxBOTrZbT+wOufI1tigvYJkIAR4CIzh0ODSZtIHLw6Eg8GP8WO788n+f+kyPheWBbScWYq68yZTkOX4PmT4DO8v3SO6pT1xsxj1xPL4wd/HY0FwntFZQgqxHaG7v/5Trx6vCKEHCT9l969Q5IGnzkrhY571+zD+n65LxWztBRAyUox5Q6couQgDu6H9lHAy32B55vwFO9GV6X2cUwIrAyiJbkwlgBHCRoK8w+Dpp83IZJP4g7Chu4g19Z4okm8utPZJF57baDMOhkwvBjf6nLcoL/F42QwBF4GQWfVsERgTONxB9hd4NyBvCDaXPiiBiGFaOwf0AMMGMftEU5Tl+N5vpdc66/SfvqUpvKMtMr/1a44fFC2Q9wqa5PcdEPLYVP+kG8Cq/l01GUBJnTkcvRCfbvExvjJxoe9y3atf1nyrrEbgh23OsCshRsGkTrAgogsAbi6vizaXr0I2rjeAUP0rvm8nAEln87SvJ/osVgfgqg6+DptusCzmzgzcX382vokfWI3AIblGdeE9Xw76w59O23zzD72FTZF+o8xFPAIDzu9k0g3JF2FLcKGvh4xDcgt/P1tIH7aB5tt/Dppiju5/0npxvIBhIj+2WL3BH3yPWrQOPZkJj0t+D31Z6rRs0r55LW2dcSJyv0dsuOd7l4ibuRB5npS49dWEpQBL2KWvhuRXdMVe6EgZ/bZyY5jiDCEQyIMokgjGwpiSI49xpmvIGuXB0aLFEmbR8+n5b8SV2wFzjR5IJrQ3vS7EINi+uWQuX5C+qXr8QbojWZzS2Djw918vhMEFPwkobxicJ7wbE+b28Jreq/LIjvZ/WnhC2958SLG8TQT42F5c7dhGOn6YblFwY4dvdheX3ZznEVy2QI3FZbUoirLi1dH7sKm0zffKm2ID4cQYjsJKR9hSBjRH0I/TGytnM8/vhpuL7sD4JC51ygOrYuK6AyBuWlSDygThOAu25HhFIDDAEYIz5R249sXvKZ84f65JNc0H8AARgTDaj27UqDmUG04WXcGv/ObIe4Yhckmcl+0ye3GB7pTs2QRWPw+JilRHgW/ijvhUiCFm1QlRAZjdpGRFQ1iP47aXXxy5cZ5w8yY/QiyQuoAya45Ka5DE2EE2feXt8a+l7taH+U0QSl9YxubDhxH0Y6F9iS3JCbCC001VoBCbU6G1JzvAov1vWI2B4/p5v6h6KzW19T3M9coEfY2x3fyJBUxDxhq8/or/bkLjVxm8cPEks1sdK+8Q6y4hAYhPRlkx/aMhLWv1WBaQTxSMd4LwWXeGm0j/bonyMHnmfuKxcBwwGA8D4EXrTJU/P93Nbc0v/78ta+GMiIsOT7rOXoon5CRgV2FBmMN14Y2NLcZWshZ+3QII01YoYeTHyaWho2zsxLGsEiMt4/fKirJ/lijjN15aP4Xm2T7ojEdT6mHUfEngQkBcc0G9VQDrI8rCyHqH6jZ6V8bjS90yf/Jkv0zOCWbQ6DucKaVYYDPFI081v+xuKL2+JyEJtrrdOVvO6wUdD8BROUOajDwsgMUKMiDFO/pF3Jqeq58MNMSlOlKehTgHn4X4EEj2iK2BF09WfDABpxNeh2TV54uEZiOmRVGW2om1YpwB8In/UtyJ1/Wau/VRAZnr+Q3AiCBNDfWd0H29/aAqy2o/Qp9FVHTmQjMD6BiKbMLbPfMbfUHq7rIUHYRZERDYmn+Fz/gm2R7oCEWSePtcIjE9cWWf6XcV5cWW1IqJqpwyeAOCUJGh3fu6HQEReAJqzp1o+h3i9pJaKgeAMNCnQoJsjEu3gQZuTIupy6qxFWwUkI+KxFr7+g/5zciUzbKx5rK/Qd4LLahYDwzACvspg++V9zRuK7xdBwELUHxlu5ZE0Z6YxV/N70G/SlSX/s7GteEHbXVkbk/85hEe6HLrSMywyj/cDCzlptooDALh5sEjiEWkMkQrIkbV3RE7gieMAAOsyuKjUpzy9eDSu63+qK/LbxsjxnbLfcSSrKxDGj9K7AfPWsL30AZH53Wzej0i3MOM/dWUZMSLyGe5MMmu1TSg3p4IYpBdO5l8Qkx5+ZG1XCBZCq5Uvjr4Ttdp8eFhdWNkWjzRMt/7DgSfaXn7LQJb7CYZO2+84AhFxfoTelOTNfmtpw4JtrC9gipGWK8v1y1l+tLhhXqKyFtIlalQKFm5CQXr6w1YAYM2u7LW9CkjrWTMJWaz9oP8xtid+wxhZ7usqHocREYCwoUxvB2Sj31J67TGLzppfwUpcWT3ylsaW0nnzGpWlZEQ7AGNgQp0xMNwLAFinApLNh51sZpI7BvtzPfyazcsJ6clynSRmYYkwwoYqg+2VTzS3FC+TtfDH8rDhPHghWq4sK5afbrsrS8ki0eQARv62a7T664W2nFVAFs7ykFa8e/D+87ZXzvRj9MaoeByRiARIaJKmIP8+saXvjPT0bWb6lxEYP07v+s0TY7n4jvk+YKgsfQFBl9CIDMsfoj40BJfFGupqgaQFoPy20gftgLk0jLKpG+ZHJSKGHtHkpOScbOYO9GBzxhLJCWyoMKAgb+PW/nPUlaXMvDKFgYdEhs8C2dz/6HgBIVPx2Nq/zpXkjX6UHm1IytfBImL9GL0tmbN9s/T3WVulCyCMgLHivOU/qytLmWFeCa5PTBiP17kLx37Q2l9VAcnWQzYAYm1b/ynIx3+ME4ygWmRtEBHnR+ldSV5ev770xxncD7F+nN6V5Il+pPR36spSDphXKA6MTUYr5n+IgK1wbRWQzFiXSUlQETCH+E+2YPpjUsNDBaRN/SpOMNoufII/6T0eG4+uDsViFslQpnclecPEdcXnqitLaYkHAG9L4sJEfJtcOHpz1qsSduaEmWTXDX5r6fV2wKxNT5nrBNC+VboJddD2yHJfNR+VKxFxVrZWYYwwsUm6gnyG23seiXWIWa8+pxxSPCIE0S2TnN8TP5FfVb1qaAhOS9pm70EbAJE3D5wsefxtqDJCU1S3v2MZWF9hcH3mj5vbS5cecR2KxW+FmNBAtN2yIkT7zyJgK5pP6SzhIOFdQYzrERtH43tzF1Vex02wa9ZkWzw60wLZnLiumvX4EdMtfdFrgZx5tESACArxv7kTeawDmaF8SkZgfZXeDphn+23Fv87kIcpjMSEDftF/MREH1y3G9YsLkXf4arzcnl95Z2vTXCT7p/47qrO3/JHNbaVnul55vq8klQR12M4b1k/Qu5L8XnOk9Kq8lD9OwiJL5T2ZhPZKQd7fuL70A7m4vCPrfu95bEu4bjHIL+KEK7LvWsM4Y/TxZhPls7tu6/7cypc9ONaqH98pj6yzVktJ6VAbtvEqsJONDtl/1M7zQj3WSGPw9j3fGbwG2FsmEyswEy2ZlMGVXF5yzPMa7lj5VNx1fz1L97hAlgdNHhJqcQcn5Kepd4SLcOgEY2UXEe+wObdDnrx3Z/KLMjpx4eA6qINaEQS/vfSntl+e7MsLnapE0uRRM1/g/IwXAcSkohEBRgAh+TwxyTht/Z4xeU17P93EJrzrl5V9jK8RwQdSN4/PSt+aTLg4IGf4PWMfy63HK7J2jwswPKLJifVNeUvuwtHvL6m5ZQgOaxA6yfLoKAEhIBs3gtyBXGjinWiQWFBfvAD0QKwf4iV5QHJtFBEBxAJsAr6cCoYFbA9gugFYgA0g1oBQS7O/5QDTmwgd2zoWTBwnjeAN3LniEzhr11jWVuiTob398ud+W+k7clH5861Fi6rD7AcqTOziEBweBYv7FnnbrUEUQZS1nbtQ6AwLZAj2yrXw73x2aZ0tyhm+spDWhySTuBuAFE5LR8mBLiQB63cDzd2AuLmLiNhEsJqjQG4ZZNlzIaWnAz1PhHQ9CrDFVEDqoN8DTNwFVm4EykPg2C2JJeL6U4uE7WgBExsIrl9OCNXGnzrB1VlcoccIKxOMksMnuWXgBsjIPUxCxiOUWYqIMD18SjldxVcFZDEwnNQjDjfwrxFk4RNPMMKc/h+Q0iUzv2T3FxHvWJdO3HMYN+KAUAZMH+TEN8Mc/0qg8NiZX951CtB7DmT5CwF6cPT74O8+Ao58A7B9yfuxDfOfAGiAbPJ13ITPIIMhjkYgsYno+mQgNOO/WGINhmFIUPdDlCyS+TBeboKVKxGb2/sutgVzXhgnZaHOfYgD/Chk5V8k4kGfruinfLV+5gbTWZZz/Lw9kL7zYZ7wA5iTP5CKR0w+hyH5Hi3LIt0TYUh+Lw4y8CyYM6+FOe0zyfvFicSimbt+WF8jXa88ASf1XyICZvH0tkyG9srTmltK75K18JrqRFEBWeoDm/Ia5AEumDvBJPsL3afBnPiuZLKe3Mye5otz9OaIA5p7IMueD3PWdyE9T0zfMybXIi4VgtY1pNO6mOTnkhqjDAAj5PiXw5z5LcAtS+5D2tBVBBE50IMvz3Zngw0VetODDY3r+y7RVCeKCshStD4IkfUIvKX3OAiey3ECC5XYTwSINZiTrwLcQBplZQ7j4znaz7KAH4EMPAPm8Z9PNskZUlGY+plMrZCpwhUOfi8xAJuJJXPGVwAppGI0R98fYVmjiPAy/qR/UNYjZDGTrQDCAGMAMXn5F+4Y7E9DyPXAqqICsmRIXQdhwj3fFU3Re4QFOXUuLpnQl78Asvy/ppP5fOmWJNFd+RNgHndNEs017eelm/digTgONB7YJxjTGWWSS0XkXJjTPgGEsTlbISKQ0ESwfWZZGOOlU59R5kREYPwEgu0zp/iG/6QIorqyFBWQpcSaZGaMjOsRQVmQ9Z8k4bFuMLE+wEOf/5jzxxkgjMOc/L+A/Mp0L2M68QAQJxDvfgvCLU9EuPUcxFvPAXddk3SD6TbuJQfQQx7xp5Dl6wA/ss/VdfTNQwhI8I8AALuyu7lsDKwv07t+8yK/pfhyTXWiqIAsEbghCZ/k1u5HGZFVrFEWpN6HWMBXYU58B1A4NY1gmqePFQOEKtB/MWTFn0xxWx0gHkxcV/EXLwbvuQpo3A/ECjh+G+IdLwPv/2ga+hun/wwQ5tHvTsJ/57pXQ1hMUETk6dy5oi+rbqyp9xvGGaVLPjZxffHxaYiqJl1UVEAWufWR1Dk37vdtUbpDWAD3lVggVIDShZCVr0sn9PlsYgFiE2blGzBj5gcmm/d88NPgri8ChRXpgUUL2F4gV0K8+23A+M70AGE8uIswAt2Phyx/QXIocQ5WiAjENxBtQY731cZ5AIDN2e2HIhB60OSl1zlck1ogovshShbIrjm9JplNBfIstlwn877aTPYZzCkfTt0/rQ3r1BJo65yRbNKj53TI4GXJ+0/nuhIDxHHE+z8KuAIQm/uEpmWx+DLi7z4M89h/wsypTAg57uXgrn+d+7kQQUQextTj0wEMYUW2J9NWqV83YM7zofS3OSm/ORUSPRty0JKWhkNw+AUsh5ZAv0jmmdip53wyKSBMqg0G7kDON7nK1RMvzLx2x1YY7QlvgBQvmmYju80fLhbwE5CBPwRMz/Qb54yAWHB0GKjdOf0hRQbA9oIj3wSau4DcioPFTmwiIMULgZ4nJNaK6cEc8mZJmo5rdToIM39SWwQuVOhdn7ypuaX0PVld/lZaU11PW08ZIoyspqlBllSWAhIGm5OoTxWQpa8gAgHrvu9xzsopoZFExczjsimxBgqnwpy0EfvOfEy9pkYyQiTXRpm0kMFLD7GQTX7OkW+nVoNM/xqTBxoPgOXrIcv/aPq9lPRnMvAHYPVHySn1o7VECIM6wShPeHBoRZ/IrmonZK9lgImelBz+mT/sexJ+Vt2jqrFPPpJjS/I34YbiswDYyMXbH4yFp2CvdbgT0f9YpPY7IDm4jHWdY5FkU0CGk6qDTsxTbI+Y5nzX/RAD+BrM4/5XcqJ8v72PZBM93vlSyEnvgPQ8YfJnc3NfNYD88ZDep2Jfxt1prBQQqO4AzKFSkkiST7uyNRGQmV4DQEpPB+WDc/K+iECCB43DcQNm7DQAt2LOx/CXhBViQgMhV5KVIZpPu/V4Hgnx21U9BDCxTuR6zLOQx7PARb5B2+qtHgjelcPNpW+HZvyYXFi9DkiDeK7MvmWd6ZBCIZ4CA8zrakAc4PdClj8/CXWd6kpKv+eer4APb4I5+X3tE6wwASmcN73LadL6EMA/DNZ/A0jXoS0VMYlrqvX+08x+ACC9TwJyy5MMvi2BOjqTP9oesai43wNwa0v0sz7gjMD6Cr3rl8v91uJfiVQ+0tzOLuieetJdawyoLamFhDgjJXTJC42xLww3Fj/1wAOVN8rlGO8EEclm9EvqUyd4FkLq0pqvHp9m2jWn/B32P/ORTuBxAvGedwG2gPZNEukJ8p4z9wnVNDM0ALB+L+D3HjrLLwlIDqzfk6acny6iK+0quZVA18kA63O7nzSo2oBndNxESdhQZZBuuap2fek0R3ePBvZO9mwrgFtCX9YH0FcY/ASj6TevPn5l6bvcWlomVyJu2JDtJ2uyNzYhIojcBEvKqfAE5mt5JxbwFZgT354kLWTY16St8NkHPgmM/SSps8E2F2vqPv3QLQEAjd/NIpcVk1og/mHA797/7/d7WXJP0vWYRDhlzqlNAJHTOm6STEJ7xRjJOcv/5+nfuF/AnrLknqcIrAiM382m7ZOLgsVXuBP5jWdlO2Q7e+rYmvdO7RsEeHway9H+B9g681E8H7LyDQdEQaWb6M0HEO+7Kjlv0dYCTaml03XyvnXbTA3RfGAyvPjQjWaBMAa2BGRaYyUVwMIpwNx1WRAAAU+aajV20KRj/BjpuuRJrk/+PE4QArVDlvxzNcj5vWzaAbk4VkrvkfUIWT7nlMUbEwCoN7FCREpx3lZ2yQxrHvPhJP/U1Ik8nbDjb9+XnPo2ebR1f5gxiebKPfLwr23uPgK3WD1xd82sIMkr8ye0o/mSUF7IcWkEVmSHrcHFQHwd0Y8xqPWRqRnIhVEG5vBG3lh8fJptIZMikr2b2pwMRQMst12QCERp98QkDmiOQB75akhx9bQb5xi7BXzoM3MvEDWTeJmuJMtvupyd8ZWhPOslMRgSq+pwuOMOKzKz+ThEAsQAbl7ZPce3W9KWyILVp1EW6pkKA2h7xPmIvwTQigxVAVn0rEv+lzMyACvzMC21znycMuXMx8ETeLznb5IN6TlEKs1sYEVAChDTd/iXx7EjE6YwdghxSO/T9c95/4NEWpmFPUClR6cdJWNWiMEEIcRzuBP5NAda5uzM7AnIcPKQgpfiTOmh5up3QKjBnPx+wC3fv87HZNjuV8G935gn6yOZfWFyiRUydWKfbrKPE7MXJiKNrjpcr+kB2tC4JCBG8rD55EY2qiNHyYp+wIQGIFZOrlf7HnuIgaoCsjjvjF1pzaT2SYjY9MzH5ZBHvOiAjXNOFpGK97wz3ReZL58M968ieMiXHuHe9Gyy7Uo+LTo1txFGAoxwqIe8TjlK1iAQTJeYLjEnqYDomiKZXG0/zCmtk9hywEQ9JWzXtj9s96BHNx9Fqthc6GYV5Kh7AEpGF7KAj7EXAIaHVUA6WD9aZz7eChQeN3kmIiH9vjFfYbvTiVmce22OaXvEbIyBdkaUgWiKJhRUsmeBpPt8TkwVANZksHhahgVEJhKffhtUf/LMx7mQE/7q4DofrbDde9+blIo1XZj/kCKfpmY/zCR/xLU7ZmEMcCIV0LnZ95K4GANgmzrdKFnDCkycYIDh3QCAdSogi5+0DgjJMcyUgPaIJ7vEFZXU+Thg47q1cT7+U3DXvyR5oloT94Ffh7wYmf5vpnNTSZpMkROHtwhM4QhmdACm+/AvDeOJ1TXHxhUBQDaQbyQ79xu1PoaSGesjmi4wRv4apnJXK0NG1u4ze8kUN6cP0HAEoQ1pTFp1Pla+FlK6ZIaN8zrir14N1CtJdhzOlHPqEC4nNoBmPYmCmvrnYpLU6ftZFgaIdTBUD39zpvdIbjZxv2GmZksvzO+dxen22X0cRGoYLdSAqs46SpaIKIgzDXxRzkWTQ3BYu7RqnHSmgKRmYg7YHerg3NJDpKez84+EOeld2D9Z4hQjLtaSYkt9F+DgrOStcxt5IH/8NJNz+n3hsZAT/zLZgyAxmSG3fg+495sHJEM0AGuA3zO53JlpLhfXP7tlfZpQEbZ0+Nc2H2rLIg0WAs8K1uyqYe5SryiLxfqgcZBQZc16838AAMPZTNWTxXTuyXwZ+DANq85J0Xvw6Oqhp9l2c8sBOzjNDNc6WDeQuLeOaOk9xcIAIN2Pg5z68YNf6kcRfnx64jZqHUqUpBY6GvfP4gk/YtYLJpg8xA6m13WI0+2Ne+f+lASEEQiwWwRhMReUIo+2/yidqSDwpiS5sDtslNXlu7kJNquVCrNbD6Qxtke6iw/Boogwl4LkaYqPwz3/WZ2fsIe4DB4QudVKBz+GZGObBwtQ/df7aea0IpV/ZCpSPMw9+sT6aO3hTHudqTFX/01rA2NOtl16Ww8AQJpwbtENMhHA5iChOecqYEoHWB4gvFsuubAnfsmtql7FTbBYn91EoZkbECIgCSNr4SG4G7l2pDORw+vPtBvgbdhEP8SJb9buOMRk3xKQEwDbfZiw4paltQJwy2YWODEAm+DErxOXHI++WZn2PjH4DQBgxeJa4RMItigg5dWhiQ12QAyRPR+20h7hIOGNgbjlkgvl+EW7t/In3ACDdYiS4SxvmS5pS+LnsPh9ZO4BxqREbe12TJ5Kn27pDEC6TkzcWM1daT12Tv9aNiGFU9LXTLfYTi2i+j3Jl8mjHQUESfxyEbsiQOHduQvKV/vtpee7HnmKH2MQ0eSH8yncS2q8EtblIegWF2scC2W+351XeV/atyXrtdEzXtLW3NK+x8djN6SmmXUhBbD2S6BxL5A/aZpJP3Ux2QFI4dRk38LMZDWkkWM9T0zfPx5cgKpVIGvsR4AfBXKDczssSRg0AQJ3ApgMv15ss5lASkmIQnhpaNqbjEM+et0Tma/2dj1ikVs614s6ESLukRq/bDw/IRdU7mwlTcy6eGRXQNITn9Hwx6aGVrzPXKQIk9FUc9lOwWGqAraiqQhACFDSv5mm3rnJAc3dYGU7ZPmJM0z6IXGD9Z0PjAwBdqay44l7SkqrptzvdG0AcHToEK+Z/cLeGphQY8NREgHZuFg30ENTAOKCsdsa15femFsm/xDL9FlffB2DuTjagpgwzi9HyjYjNBBZxHsHkRDsig535FzPT+TJD46lazsrgo7JrJDNQbAumSVzXeXbfa30gMvjkb5xNKvG9MwF6/u+nz97aV/kk0ydo0NyRmTaCDCCe78BWf7CQ076MvBs8Hcfwoyb7bEOdJ0E6UsFRKZxX4kFYg0c/X5S331u1gelC8IJ3oOJchLSdeXiXq3xWnTJxeVP+m3FZ7uSeV6zzGDUldXWJhYLRIkfzl9UvW5pXXoFJCw2gp0kHpkVkMmNdMGYvwE70CXPQYMRR1y4Jz0b0XwQ8bZnALb/KK2XCIiDOe3qZFN7qhUz6Rq6Fbz7relJ8DgpWGz8LknJvt85kNS6sD3gyHeS8yBu8GDrKI2+ktIqoOdsYPz2Ke/feo0D/Cjk+Mv3pZ8/cE+ldY2j3wdqv5h7mnpBRE6M1HmrrIVfEmGOxyFyAwy6+MowzgtsHsfHBqKIRma10wwRK0UOweFRsLhvCUzGu0CsQ+w04ci2BQJMbqQD/B6MPGduad0NWN1xlJNmy/VlAF8B8jhgok8vq3E/uPubgLP7Z/EVl9bf4DRurAJQ/y24+wuQ41+VhOLul/sqDUGWPMwJ/xPxjpcAtpiGHKdWBeuA64dZ+Vc4tHtOwAc/3b7nk0y7WwAsugisaXkqIu6CyDnVXRNbiq/oKpqv0TOAKiDt9QxJTIsvUU6HJtlUATlGrEmW2UHid1CVOOeyoab3KKvwTREQOcRcIznA5QFX3F9ASMwY7cQImC7E+z8Oe9wVAHLTWCGJIMmKF0NGvw/e/09ArpBcT6gCDDCP+yxQOHUG6yPN9VXdnhTJssW5ZxomLGuENXL95CpuKVi26xE4BCerK19vbin+vVtmXu9H6EV0P0TpTDK7ehJBJCH5a8duZ+BPbUGEnEvcaUwmzrl8Hc5+n/Zv4qGvyfYCYz8FH/iH9JxGmLYxAMKc9o+Qx/wtUDgdyB0PKa2C+b2vQI67YnrxSNMZAwDv/pvUwplblyEQXRckNHgPBso/ATC5Z7VEFiaBm2DdisqbQpk/dd3iCF0pKyog2WMYVq5EFJEvIQ8gg9kwwQC4IuI97wZrtycurINOxadRZGJgTnwb7JN/DPvkH8Oc/UPIsssTIZruLEnqEuPvPgKOfK9dJXojuoQQGZLTUU+jVpZMuGPrWuV01C3kZTGyITY9hawoKiAZInVjWcZNYYxhzm6sxakgiWjEKuKdfwr4kRlEZIqVA5MGBEz590GvawKSA0e+iXj32wBXaleRLEGEgPGrqcgvufMUk66sC0ZvCTW+3faJhVohigpItkjdWEYuqt5Ojy22R3Bs3Q08zNccrBBbBMZ+gvjz56WnzlsiEve3RFoJGVt7JftZHlPycUkO3Hst4h0vSl9jMNfDlCRoHayvcrfL5b6XivySnHhlLTyH4PKrKx8KI/HbriiOVBFRVECyRRKNBTG4GhbH0FkiaZqQqYcDp3wvczx+Sw+4AbB8PcLOp4Ojw/vn0qKfsq/SEpDWvk76u5agMID3fQDx5y8A4JNDi+3w/gmCdAsJXCvn7h3lpqXlvprOwiUhlv7lYSLuMXkIkd3EeYrSeQKyBoGAWNv7pVCO97o8zMIO8tZhxAbYfDCdtFuWQUw9HxFoPoC5nXLfJyKYuAvx9v+C+MtXgNWbsS9Ro51iTaRfYvf9LlTAhz+PuPMSxN+8Nc13lds/KmxuTWHgIWLkcwCAdUvfwsVmGFlVu49182rTJUZUQJQOIvPhhyIgh+Dk3PvHG9tLn7Q98l6MTuv4n3cLJN65HnArcPA5EElqe5ieuU/W9OlhQYIPfgZ8+P9C+s4DSpdAep8EdD0aYvuTzfFYA5oPAxO/TMJ0y9cBtTsSayi3bBZRYEdwWUR0BZEwxttdvfyDNNHcknf57AvtHf1Cc0vpM26Z/LmG9ioqIFmzQgjBzfFToSJvNFYGFzYhXrrR3dwNNB6cYSbKTdmfmCvppJ8mPGTlemD0B0lqLekCTFeamqSZ1FWP6Ya7Lew70c42Zy4XRHTBYYKfau0fICvp0ZP+ZXBr938PldrTbEEeFyaop9SPqutSuAkWt8Fy0yK9xtbB132n0Ds2Aq8jBGTSCllbfThsK37cDMi74shCJ8RL06JIfubft7sftjbEbTFNpMjUwuG+Mx3Sl/4OszyvclTWB00ONpS521KuISBLdfN8xv61CUbWPzjWuL54hThcLxZkBEUL9R7JIgNw4tO0Nkumf3AIDmsQOlFIOsfMTq2Q0W3y0b4y/8Llsdw3EWVBXVnzIBKz+tiIg11Rraiq2L49jpknhmB6xfmReLWsquzhEJxItoozTbqyLq5sa2wpbcwtk3f7EXqoK2u2Q8PEBgGPj/gbSneAMIvu3BYhYuCj8GFn8HMIbgQrO+RcNAEgy6VrO15A0gSLdmBVeU9ja+k9tiQfQzLATaeO2AX5lMT6MKEcRycQP5rWSsjmIFuTiAhWld8bbyw90/XJJb6qBahmOT6FTcAVcCZycuZivlZjUqNyAggs/dzvwDVje/kpeWZld6eJSGetjtJzIbi5/MkwUnqV65az/URWDxguGoLpFRdH+bHiRWMPZrleQrpIiSIgr5M/iy7+WHLSF5ug0QJUsxmf8BOImCAX9TPetwazrgtnoFve12fwGr+19DZZVf43boBJU7tn3qVlOqx/Epshci6aRHi9jth5t3GiycP6UT5QrpkPcwNmqmiVJRGJJKxcMnoX63i97RbTqam+j7L9jAjsYv0C4KT1JRDfQPQj9IY4yfbLv4YbSx+VKxEBSKsyoQpIljroegQSNnfR2LAfj1e7frFktvzxi0iwo+kWEfLtg2tHR7Ax+zWi00kwcAjOrar8S3M0/ocriYtRRSSjfdyIwPkGoq/Qm355Q7ih9FlJ9m8MMx5E0alhhpGEcSb3plCOv7EFuLll6lUOsj6IYHvFhVFusRdWPpueOu+cSTQN7c11m78IVd6TK8BoH8u45QQ4v4dNs0yuaF5ffLcIAjZle441HfqwE1fWhXvKMfDPmJTTjIRmVG2TeCTlSRtsBBteIwJiXWe17WQfe8roCJvhv9GIaB/rCJPEhRF612fe2bipb7WsT9L/q4Bk7TmnYZf5VdUfhHFssCVxoq6sdhFsSWyYwIau88d2phvnsVP7WG712PfDePyALYqDJlzMuH5AGJLYTvHyv0kY3JbdRUNnn5Rdm4rI6vJ7wgj/0/ZLTvdD5mx9BFcUF/bGodyq8gdIWEgHu24SV5Z1F1XeEUbjDterWXs7wPq0YZzB9Zrz/PbSH8iVSWCFCkj2VgvcOIzIDTDlin1pqPJ216MDfA7iEU0eJk7woTr9SwEAG0HpYLdNGjRAEXhPviw0WTNOC1BlfiwAhAUNeEWW77Pjc/VceSUiNgLLnrl31I/zebHJXa4LNkbd8DxC8aBxiDBAoyYv7l1Vuw+bYdKQxk5fkUYOwRUuqt4ea/hr0ysWGtqbdQwmKJHyNP4aBZE0H58KSEYHOGELayq/CDVeHoBxm9eomSNsQ296xXEcr+++ZPS7HILrtLQOh2yfVgGqi8v/0BzhV11RHDW0N8veDROagDE4AQ/2nbrvxyogWZ0Ak/2QSyo3cAzPh0HDOBiqJTIbe71pByTnR/l3bnX5E0niSt1LOojUXVpneGWs8QHTpYuULBOJaApiQPMoAMBmFZCOWCXmLil/J47zj2BRTy0RXSnOpB1E0w5KLpb56dxF5TdzCA5r57u9ZOH2D2L7Br0k7lIprh57KNb5CpMTEbPIBWSMmoLl6BelhAHqPhYBYHiFCkjniMjFlWtjTS6jQcUV9LT6TOLhBiXnR3mNPb/8Sm6CxRqE+d80Z2VBtqAJQKQ+H5ZubnXl634s/r0tiVvIvkVi/Mj+INcExGsmr6PvQ9ZIAwDWrMle4IQKyKFEZPXo90IZzwiR97k+cVFFpDUJkYB3g5LzZX46d0H5ZSTMvBfXSQcgI+9Jn4TM48A3bBAU82DqfmjnfQRugr13ovLmUOZO1y1uQYI2CIC8e5ZCl/CNPVUhdsFK6x2UI+hDaBIUeajtfUgFZGmISH5N+aZmWS6OjXhTbkAcAd/JIZhk4tRxRXF+lFflzi+/kkyKi8x7nquNyft7Y3aGcTaswM7HyW4SdA4SPffkuvArAMC69k3wrXZ6zFpMBC8vC5FN48D57FdC2FgjAs1PUhGLh20GwiZRdPwZcmBHn+c5yj7k6yxP1ONd7e5DKiBLRUQ2wXavHf3NA/dV1vgqr3ElccZAOnFfhIR3eRiTFzYrfF3ugvJb0jQNC5K6Oj2QJYULR+8m+RMpSFoRq90fhIiCUICb5CmjIyRMu++vdUq9a/Xoj1Hj22xRLOapTgqBaLuA2ORd+dLoTgKC2dzPcGrhiXwXRp1YR9yHuoRi5MeltdWHuaH9fUgFZCn0gyR7r3nU5RjPnVd+WajydchhwvUm+yKdYI2QIAnvSuIguC9O4NL8hWm01foFLuU5DCsCUvBvyEEwH+1PAMki4T/Sz5yXcdKyct3qyofCaPyOK87TIVYiolsEYjbL2WhgCHZW+1TDiThb578aynHMGFg9AHkEre4gaDmu1mRzrlUBmZ3LIZIQboJ155c/YWqyKja53Q1k3xohEYyBuH5xcYLXjo82L8ytSs95HItQ3bQ0ca5pPhfK3OXyMGyjFdI6Te/LvHf3ROEL5DzXbx9O+lYd/uVhIu4xeUib74diYWKVNRfkH9I2nNX7t1JwyLnj95P4V1OU7FaTbLPFZ3Iwvszd1Yj/S8xzH1IBWRIiwsm616tHf2zK5YvDGN9Fh5oriiURsxTTn95PcEWxyKEaxuIb7VPLl/Wurd3LTbDH6pxHau0YuWR0LwTvQq+YdiYoFCCYHhEx5h3Hr91VBebX9ZCe1De9F9buZdO8yuSl3UW3vC2JiU1+SFaP3J2m1Z/9+28ESYgr5N4TqrFscu0V7IwqSDC9YgR878Cq8h4wm+6rdLwoRzG5mtYgrG/pPdt12feZvFwOAn6cAYDIEq21zqRWCnMFsXBAbPBrphHfLBdVbydhsHFy0ju215nWnvY3lK61/fJf/F42xSA3p/eMSVhyGOGX3UXlP1rI+tYti665pfhJ9wjzar+7DfdDeFcUF6rxR3ZZZRVugT+aSLnJtt5avMIOms+GUTbJpCKfzgb7EwmfK4kLZV5nf1teCwBYj5jVfHBqgRzdKjgSkGQTdGynPbf8PDTic6PndlcU63rEtFbwS6X+w6TFkYfJ9YuNkTtDHevtU8vPlYuqt3MITgRx0eS2Wpec6rY98uI4xp+6fskxojkn8RiQXKjGW6y4K1phyQt2P2lor1tVeX0Yjd9zy5L7Odo9hxjhXa+4MMH7mjQvkNNRx21HF+zQsrzdqsrn/N7wQTsoOQhC1P2QA8dQM9cnLo7zbhuaL8I6RNyW7WSiKiBHb7pR1sKTMCSMnFv5mnlq+aJQ54tiM97oesW4PrEmOTbtF6PZn26OBxLRdYtxJbEx8pehytfd85Pyee7c0c0kDDfALLbUJK2JUJ44urc25i+NE/FGt0xyLSGcdRO07n+Z5OI4t9pGvFQu3FPGxn2fsWD3sw4RAr97rPD8WOXX3XLJQYB4BAsRAoFEyA2IC434S1uPf9B90ehvuKkVknuUrE1LQa+qvsnv4QddSZxzkE4JJDns4gvwrl9yocFfNGt8llxc+x0AyXoyUTVB2+xSaf27uaP4HAN5DYlLba84TBDNCVAMAggDgcgxaP90sEcAcA4WPQI0gRhwMz0+tWtk9N9XXoqx6e5pkQ5eI4LIr67siSdUP2yceTUsEMYIAh5JBtR9zham/xVQAGd7BWgSMfLjplJ5k6zFxFQX5TG4HxEBCYi/sf894vgW2yUuVonIQ98PCOt6EudpbMQvmDG+Vp5W3dWu50hAsAkmcR0WXy55/J0pmGWsEKF1bUmAcPbnlaR/EIRx3YmzMU7wS+MPh9cULx17aCmMHRWQxTmh7Vf7m7f0nh2D+xNGvsDm5PHIA6gDoZ5OcMnINEj2TWQerof7dfYcDAqJdMXxuAcG3zAin8M55e+2TO20+E1cKht/3LAvbTxv6F8bc3gLI59pe9NMUx5ATG/FCOAS2zuM0YvBN00zXiUXVq878L2OYR+SllXCHf3nRIlvAeW5pke6QQDNA+7HIvmqERHYEr18KHfB6JemCux8LJZqQ/2n5Et4G8k/sT1SRATQmOzV2cUCcALkkmcRPX/EgKvc+eXPz1ebq4B0oEWCdWCrI3En8n6if7UBn0vimYw4y/WlCSMaBJtACIiTp32ZrjJbK85DP8XErkiLF7X+XgTWOgD5dNJsAmGCu2BwvbX8Mprh23LB+ANTxW8pCcdBk+7mZHUMAPUfDTwpT14aAi8C8RiQ/Wn77BXBr2ixzQq/JedUfzbleS2qe5+6GOGO0mkBeLaAqxHxOEYsI2BFpAzBPdbgRoDfknMr21uTGObxgOfUaxvfMfjoPMJzhXgGgDNj4KPSRVEmLY9Wm4vF9hjka+/9+uj3r7wy2ZPDxoU5VKsC0jkWicHw/nsIJAS39p4Vmna1AKtJnEPiVNcl3cinL4pIIu5junuS2BD79UxBspKGALDpSrT175isSEPEgxD8TIxsNZY/RA07ZFV5z35Ch2SjNDPCfRt4oBXBncjjLFBk/432dKLFYl0xznR93IEcHoKRP0T9UEI635YfzoJM/Sxugh07vuc4ydH0dGVrIh2vQ3qsBHQVK/LkB8ems8o6bX5TAVngFTJWQA7ckCYhuGnwRM94uggfL8BpJE4BsZLEcgAlERZI5AGx+9JQ0AukDnKckFEBd4mReyn4FYA7LOXnGLR3yel7ygd29uEVkDVrFvgU+TEQbuxKzu9M7fPclDwHrEFcKq4GboDBGhisSVySUyN7uAkWKyDT3OvCXtsx+vxjNp6HYbELzHKYrgrIYux8SDcah5MJQQ5R3pSEeWh4Rc9xxVoBjdBVCwXbna7sxmp131vK1TAyOiFrMTGbAb7Y3DQLOuCxsJFVnXg/bDlSN0I2ZqwPbUz+wyz1IxWQrAjKBgjOgqBVdOYoJnsSZngYZk3rB0nKCmpnVxRFBaRzrZXWEkgOWBJNCoOKhKIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoiqIoyjzw/wFRemqw27hXjgAAAABJRU5ErkJggg==" alt="One-Forty">
+    <button class="cta-btn" id="cta-btn">📱 下載 One-Forty App</button>
+    <button class="replay-btn" id="replay-btn">🔄 再玩一次</button>
+    <div class="leaderboard" id="leaderboard"></div>
+    <div class="back-link" id="back-link">← 更換語言</div>
+  </div>
+
+</div>
+
+<script>
+// ⚠️ 部署 Google Apps Script 後，把網址貼在這裡（結尾長得像 https://script.google.com/macros/s/xxxx/exec）
+// 沒填的話，計時/答題都正常，只是不會記錄到 Google Sheet、結束頁也不會顯示排行榜。
+const API_URL = "";
+
+const QUESTIONS =[{"id": 1, "topic": "時間與星期", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'hari ini'?", "ph": "Ano ang Mandarin para sa 'ngayong araw'?", "vn": "Tiếng Trung của 'hôm nay' là gì?"}, "options": [{"zh": "今天", "py": "jīn tiān"}, {"zh": "明天", "py": "míng tiān"}, {"zh": "昨天", "py": "zuó tiān"}, {"zh": "星期", "py": "xīng qí"}], "answer": 0}, {"id": 2, "topic": "時間與星期", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'besok'?", "ph": "Ano ang Mandarin para sa 'bukas'?", "vn": "Tiếng Trung của 'ngày mai' là gì?"}, "options": [{"zh": "昨天", "py": "zuó tiān"}, {"zh": "明天", "py": "míng tiān"}, {"zh": "今天", "py": "jīn tiān"}, {"zh": "後天", "py": "hòu tiān"}], "answer": 1}, {"id": 3, "topic": "時間與星期", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'pagi'?", "ph": "Ano ang Mandarin para sa 'umaga'?", "vn": "Tiếng Trung của 'buổi sáng' là gì?"}, "options": [{"zh": "早上", "py": "zǎo shang"}, {"zh": "晚上", "py": "wǎn shang"}, {"zh": "中午", "py": "zhōng wǔ"}, {"zh": "下午", "py": "xià wǔ"}], "answer": 0}, {"id": 4, "topic": "時間與星期", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：夕陽、天色昏暗", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "早上", "py": "zǎo shang"}, {"zh": "中午", "py": "zhōng wǔ"}, {"zh": "晚上", "py": "wǎn shang"}, {"zh": "星期", "py": "xīng qí"}], "answer": 2}, {"id": 5, "topic": "時間與星期", "difficulty": "簡單", "qtype": "聽音選詞", "media": "🔊播放「星期」發音", "prompt": {"id": "Kata apa yang kamu dengar?", "ph": "Anong salita ang narinig mo?", "vn": "Bạn vừa nghe từ nào?"}, "options": [{"zh": "星期", "py": "xīng qí"}, {"zh": "今天", "py": "jīn tiān"}, {"zh": "時間", "py": "shí jiān"}, {"zh": "小時", "py": "xiǎo shí"}], "answer": 0}, {"id": 6, "topic": "時間與星期", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'kemarin'?", "ph": "Ano ang Mandarin para sa 'kahapon'?", "vn": "Tiếng Trung của 'hôm qua' là gì?"}, "options": [{"zh": "明天", "py": "míng tiān"}, {"zh": "今天", "py": "jīn tiān"}, {"zh": "昨天", "py": "zuó tiān"}, {"zh": "後天", "py": "hòu tiān"}], "answer": 2}, {"id": 7, "topic": "時間與星期", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'sekarang'?", "ph": "Ano ang Mandarin para sa 'ngayon'?", "vn": "Tiếng Trung của 'bây giờ' là gì?"}, "options": [{"zh": "現在", "py": "xiàn zài"}, {"zh": "以前", "py": "yǐ qián"}, {"zh": "以後", "py": "yǐ hòu"}, {"zh": "剛才", "py": "gāng cái"}], "answer": 0}, {"id": 8, "topic": "時間與星期", "difficulty": "普通", "qtype": "看圖選詞", "media": "🖼️圖：時鐘", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "時鐘", "py": "shí zhōng"}, {"zh": "日曆", "py": "rì lì"}, {"zh": "手機", "py": "shǒu jī"}, {"zh": "手錶", "py": "shǒu biǎo"}], "answer": 0}, {"id": 9, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：一碗湯圓", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "湯圓", "py": "tāng yuán"}, {"zh": "月餅", "py": "yuè bǐng"}, {"zh": "粽子", "py": "zòng zi"}, {"zh": "年糕", "py": "nián gāo"}], "answer": 0}, {"id": 10, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：紅包", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "信封", "py": "xìn fēng"}, {"zh": "紅包", "py": "hóng bāo"}, {"zh": "錢包", "py": "qián bāo"}, {"zh": "禮物", "py": "lǐ wù"}], "answer": 1}, {"id": 11, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'Tahun Baru Imlek'?", "ph": "Ano ang Mandarin para sa 'Chinese New Year'?", "vn": "Tiếng Trung của 'Tết Nguyên Đán' là gì?"}, "options": [{"zh": "春節", "py": "chūn jié"}, {"zh": "端午節", "py": "duān wǔ jié"}, {"zh": "中秋節", "py": "zhōng qiū jié"}, {"zh": "清明節", "py": "qīng míng jié"}], "answer": 0}, {"id": 12, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：粽子", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "粽子", "py": "zòng zi"}, {"zh": "月餅", "py": "yuè bǐng"}, {"zh": "湯圓", "py": "tāng yuán"}, {"zh": "水餃", "py": "shuǐ jiǎo"}], "answer": 0}, {"id": 13, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：月餅", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "月餅", "py": "yuè bǐng"}, {"zh": "粽子", "py": "zòng zi"}, {"zh": "湯圓", "py": "tāng yuán"}, {"zh": "年糕", "py": "nián gāo"}], "answer": 0}, {"id": 14, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "聽音選詞", "media": "🔊播放「新年快樂」發音", "prompt": {"id": "Kata apa yang kamu dengar?", "ph": "Anong salita ang narinig mo?", "vn": "Bạn vừa nghe từ nào?"}, "options": [{"zh": "新年快樂", "py": "xīn nián kuài lè"}, {"zh": "生日快樂", "py": "shēng rì kuài lè"}, {"zh": "恭喜發財", "py": "gōng xǐ fā cái"}, {"zh": "早安", "py": "zǎo ān"}], "answer": 0}, {"id": 15, "topic": "節慶習俗", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'semoga makmur (ucapan Imlek)'?", "ph": "Ano ang Mandarin para sa 'yumaman ka nawa (bati sa Bagong Taon)'?", "vn": "Tiếng Trung của 'chúc phát tài' là gì?"}, "options": [{"zh": "恭喜發財", "py": "gōng xǐ fā cái"}, {"zh": "新年快樂", "py": "xīn nián kuài lè"}, {"zh": "平安健康", "py": "píng ān jiàn kāng"}, {"zh": "謝謝光臨", "py": "xiè xie guāng lín"}], "answer": 0}, {"id": 16, "topic": "節慶習俗", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'lampion'?", "ph": "Ano ang Mandarin para sa 'parol / lantern'?", "vn": "Tiếng Trung của 'lồng đèn' là gì?"}, "options": [{"zh": "燈籠", "py": "dēng lóng"}, {"zh": "鞭炮", "py": "biān pào"}, {"zh": "對聯", "py": "duì lián"}, {"zh": "紅包", "py": "hóng bāo"}], "answer": 0}, {"id": 17, "topic": "日常問候", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'terima kasih'?", "ph": "Ano ang Mandarin para sa 'salamat'?", "vn": "Tiếng Trung của 'cảm ơn' là gì?"}, "options": [{"zh": "對不起", "py": "duì bu qǐ"}, {"zh": "謝謝", "py": "xiè xie"}, {"zh": "再見", "py": "zài jiàn"}, {"zh": "你好", "py": "nǐ hǎo"}], "answer": 1}, {"id": 18, "topic": "日常問候", "difficulty": "簡單", "qtype": "聽音選詞", "media": "🔊播放「早安」發音", "prompt": {"id": "Kata apa yang kamu dengar?", "ph": "Anong salita ang narinig mo?", "vn": "Bạn vừa nghe từ nào?"}, "options": [{"zh": "晚安", "py": "wǎn ān"}, {"zh": "午安", "py": "wǔ ān"}, {"zh": "早安", "py": "zǎo ān"}, {"zh": "平安", "py": "píng ān"}], "answer": 2}, {"id": 19, "topic": "日常問候", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'maaf'?", "ph": "Ano ang Mandarin para sa 'paumanhin'?", "vn": "Tiếng Trung của 'xin lỗi' là gì?"}, "options": [{"zh": "對不起", "py": "duì bu qǐ"}, {"zh": "謝謝", "py": "xiè xie"}, {"zh": "你好", "py": "nǐ hǎo"}, {"zh": "再見", "py": "zài jiàn"}], "answer": 0}, {"id": 20, "topic": "日常問候", "difficulty": "簡單", "qtype": "聽音選詞", "media": "🔊播放「多少錢」發音", "prompt": {"id": "Kata apa yang kamu dengar?", "ph": "Anong salita ang narinig mo?", "vn": "Bạn vừa nghe từ nào?"}, "options": [{"zh": "多少錢", "py": "duō shǎo qián"}, {"zh": "在哪裡", "py": "zài nǎ lǐ"}, {"zh": "幾點了", "py": "jǐ diǎn le"}, {"zh": "怎麼走", "py": "zěn me zǒu"}], "answer": 0}, {"id": 21, "topic": "日常問候", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'sampai jumpa'?", "ph": "Ano ang Mandarin para sa 'paalam'?", "vn": "Tiếng Trung của 'tạm biệt' là gì?"}, "options": [{"zh": "再見", "py": "zài jiàn"}, {"zh": "你好", "py": "nǐ hǎo"}, {"zh": "謝謝", "py": "xiè xie"}, {"zh": "請問", "py": "qǐng wèn"}], "answer": 0}, {"id": 22, "topic": "日常問候", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：兩人揮手道別", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "再見", "py": "zài jiàn"}, {"zh": "你好", "py": "nǐ hǎo"}, {"zh": "謝謝", "py": "xiè xie"}, {"zh": "對不起", "py": "duì bu qǐ"}], "answer": 0}, {"id": 23, "topic": "日常問候", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'permisi, boleh tanya'?", "ph": "Ano ang Mandarin para sa 'pwedeng magtanong'?", "vn": "Tiếng Trung của 'xin hỏi' là gì?"}, "options": [{"zh": "請問", "py": "qǐng wèn"}, {"zh": "沒關係", "py": "méi guān xi"}, {"zh": "不客氣", "py": "bú kè qi"}, {"zh": "麻煩你", "py": "má fan nǐ"}], "answer": 0}, {"id": 24, "topic": "日常問候", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'sama-sama'?", "ph": "Ano ang Mandarin para sa 'walang anuman'?", "vn": "Tiếng Trung của 'không có gì' là gì?"}, "options": [{"zh": "不客氣", "py": "bú kè qi"}, {"zh": "對不起", "py": "duì bu qǐ"}, {"zh": "再見", "py": "zài jiàn"}, {"zh": "請問", "py": "qǐng wèn"}], "answer": 0}, {"id": 25, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) air, pilih satuan yang tepat", "ph": "Isang (___) tubig, piliin ang tamang panukat na salita", "vn": "Một (___) nước, chọn từ chỉ loại đúng"}, "options": [{"zh": "個", "py": "gè"}, {"zh": "杯", "py": "bēi"}, {"zh": "隻", "py": "zhī"}, {"zh": "張", "py": "zhāng"}], "answer": 1}, {"id": 26, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) anjing, pilih satuan yang tepat", "ph": "Isang (___) aso, piliin ang tamang panukat na salita", "vn": "Một (___) con chó, chọn từ chỉ loại đúng"}, "options": [{"zh": "杯", "py": "bēi"}, {"zh": "張", "py": "zhāng"}, {"zh": "隻", "py": "zhī"}, {"zh": "本", "py": "běn"}], "answer": 2}, {"id": 27, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) kertas, pilih satuan yang tepat", "ph": "Isang (___) papel, piliin ang tamang panukat na salita", "vn": "Một (___) giấy, chọn từ chỉ loại đúng"}, "options": [{"zh": "張", "py": "zhāng"}, {"zh": "隻", "py": "zhī"}, {"zh": "杯", "py": "bēi"}, {"zh": "個", "py": "gè"}], "answer": 0}, {"id": 28, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) buku, pilih satuan yang tepat", "ph": "Isang (___) libro, piliin ang tamang panukat na salita", "vn": "Một (___) sách, chọn từ chỉ loại đúng"}, "options": [{"zh": "本", "py": "běn"}, {"zh": "張", "py": "zhāng"}, {"zh": "隻", "py": "zhī"}, {"zh": "杯", "py": "bēi"}], "answer": 0}, {"id": 29, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) orang, pilih satuan yang tepat", "ph": "Isang (___) tao, piliin ang tamang panukat na salita", "vn": "Một (___) người, chọn từ chỉ loại đúng"}, "options": [{"zh": "個", "py": "gè"}, {"zh": "隻", "py": "zhī"}, {"zh": "張", "py": "zhāng"}, {"zh": "本", "py": "běn"}], "answer": 0}, {"id": 30, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) kursi, pilih satuan yang tepat", "ph": "Isang (___) upuan, piliin ang tamang panukat na salita", "vn": "Một (___) cái ghế, chọn từ chỉ loại đúng"}, "options": [{"zh": "張", "py": "zhāng"}, {"zh": "隻", "py": "zhī"}, {"zh": "杯", "py": "bēi"}, {"zh": "本", "py": "běn"}], "answer": 0}, {"id": 31, "topic": "量詞", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) obat, pilih satuan yang tepat", "ph": "Isang (___) gamot, piliin ang tamang panukat na salita", "vn": "Một (___) thuốc, chọn từ chỉ loại đúng"}, "options": [{"zh": "顆", "py": "kē"}, {"zh": "張", "py": "zhāng"}, {"zh": "隻", "py": "zhī"}, {"zh": "本", "py": "běn"}], "answer": 0}, {"id": 32, "topic": "量詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Satu (___) mangkuk, pilih satuan yang tepat", "ph": "Isang (___) mangkok, piliin ang tamang panukat na salita", "vn": "Một (___) cái bát, chọn từ chỉ loại đúng"}, "options": [{"zh": "個", "py": "gè"}, {"zh": "張", "py": "zhāng"}, {"zh": "隻", "py": "zhī"}, {"zh": "本", "py": "běn"}], "answer": 0}, {"id": 33, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'air'?", "ph": "Alin sa mga salita ang may kinalaman sa 'tubig'?", "vn": "Từ nào liên quan đến 'nước'?"}, "options": [{"zh": "河", "py": "hé"}, {"zh": "林", "py": "lín"}, {"zh": "炎", "py": "yán"}, {"zh": "坡", "py": "pō"}], "answer": 0}, {"id": 34, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'api'?", "ph": "Alin sa mga salita ang may kinalaman sa 'apoy'?", "vn": "Từ nào liên quan đến 'lửa'?"}, "options": [{"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "樹", "py": "shù"}, {"zh": "錢", "py": "qián"}], "answer": 1}, {"id": 35, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'pohon / kayu'?", "ph": "Alin sa mga salita ang may kinalaman sa 'puno / kahoy'?", "vn": "Từ nào liên quan đến 'cây / gỗ'?"}, "options": [{"zh": "樹", "py": "shù"}, {"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "錢", "py": "qián"}], "answer": 0}, {"id": 36, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'mulut'?", "ph": "Alin sa mga salita ang may kinalaman sa 'bibig'?", "vn": "Từ nào liên quan đến 'miệng'?"}, "options": [{"zh": "唱", "py": "chàng"}, {"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "樹", "py": "shù"}], "answer": 0}, {"id": 37, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'hati / perasaan'?", "ph": "Alin sa mga salita ang may kinalaman sa 'puso / damdamin'?", "vn": "Từ nào liên quan đến 'trái tim / cảm xúc'?"}, "options": [{"zh": "想", "py": "xiǎng"}, {"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "樹", "py": "shù"}], "answer": 0}, {"id": 38, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'orang'?", "ph": "Alin sa mga salita ang may kinalaman sa 'tao'?", "vn": "Từ nào liên quan đến 'người'?"}, "options": [{"zh": "你", "py": "nǐ"}, {"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "樹", "py": "shù"}], "answer": 0}, {"id": 39, "topic": "部首", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'logam / emas'?", "ph": "Alin sa mga salita ang may kinalaman sa 'metal / ginto'?", "vn": "Từ nào liên quan đến 'kim loại / vàng'?"}, "options": [{"zh": "錢", "py": "qián"}, {"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "樹", "py": "shù"}], "answer": 0}, {"id": 40, "topic": "部首", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Kata mana yang berhubungan dengan 'berbicara'?", "ph": "Alin sa mga salita ang may kinalaman sa 'pananalita'?", "vn": "Từ nào liên quan đến 'lời nói'?"}, "options": [{"zh": "說", "py": "shuō"}, {"zh": "河", "py": "hé"}, {"zh": "燈", "py": "dēng"}, {"zh": "樹", "py": "shù"}], "answer": 0}, {"id": 41, "topic": "數字", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'angka 1'?", "ph": "Ano ang Mandarin para sa 'bilang 1'?", "vn": "Tiếng Trung của 'số 1' là gì?"}, "options": [{"zh": "一", "py": "yī"}, {"zh": "二", "py": "èr"}, {"zh": "三", "py": "sān"}, {"zh": "十", "py": "shí"}], "answer": 0}, {"id": 42, "topic": "數字", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'angka 10'?", "ph": "Ano ang Mandarin para sa 'bilang 10'?", "vn": "Tiếng Trung của 'số 10' là gì?"}, "options": [{"zh": "一", "py": "yī"}, {"zh": "十", "py": "shí"}, {"zh": "百", "py": "bǎi"}, {"zh": "千", "py": "qiān"}], "answer": 1}, {"id": 43, "topic": "數字", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'angka 100'?", "ph": "Ano ang Mandarin para sa 'bilang 100'?", "vn": "Tiếng Trung của 'số 100' là gì?"}, "options": [{"zh": "十", "py": "shí"}, {"zh": "百", "py": "bǎi"}, {"zh": "千", "py": "qiān"}, {"zh": "萬", "py": "wàn"}], "answer": 1}, {"id": 44, "topic": "數字", "difficulty": "簡單", "qtype": "聽音選詞", "media": "🔊播放「五」發音", "prompt": {"id": "Kata apa yang kamu dengar?", "ph": "Anong salita ang narinig mo?", "vn": "Bạn vừa nghe từ nào?"}, "options": [{"zh": "五", "py": "wǔ"}, {"zh": "六", "py": "liù"}, {"zh": "七", "py": "qī"}, {"zh": "八", "py": "bā"}], "answer": 0}, {"id": 45, "topic": "數字", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'angka 0'?", "ph": "Ano ang Mandarin para sa 'bilang 0'?", "vn": "Tiếng Trung của 'số 0' là gì?"}, "options": [{"zh": "零", "py": "líng"}, {"zh": "一", "py": "yī"}, {"zh": "十", "py": "shí"}, {"zh": "百", "py": "bǎi"}], "answer": 0}, {"id": 46, "topic": "數字", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：數字 7", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "七", "py": "qī"}, {"zh": "八", "py": "bā"}, {"zh": "九", "py": "jiǔ"}, {"zh": "十", "py": "shí"}], "answer": 0}, {"id": 47, "topic": "數字", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'angka 10.000'?", "ph": "Ano ang Mandarin para sa 'bilang 10,000'?", "vn": "Tiếng Trung của 'số 10.000' là gì?"}, "options": [{"zh": "萬", "py": "wàn"}, {"zh": "千", "py": "qiān"}, {"zh": "百", "py": "bǎi"}, {"zh": "十", "py": "shí"}], "answer": 0}, {"id": 48, "topic": "數字", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'jam berapa'?", "ph": "Ano ang Mandarin para sa 'anong oras'?", "vn": "Tiếng Trung của 'mấy giờ' là gì?"}, "options": [{"zh": "幾點", "py": "jǐ diǎn"}, {"zh": "多少錢", "py": "duō shǎo qián"}, {"zh": "在哪裡", "py": "zài nǎ lǐ"}, {"zh": "怎麼走", "py": "zěn me zǒu"}], "answer": 0}, {"id": 49, "topic": "超商生活", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：便利商店招牌", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "銀行", "py": "yín háng"}, {"zh": "便利商店", "py": "biàn lì shāng diàn"}, {"zh": "醫院", "py": "yī yuàn"}, {"zh": "學校", "py": "xué xiào"}], "answer": 1}, {"id": 50, "topic": "超商生活", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'dipanaskan'?", "ph": "Ano ang Mandarin para sa 'painitin'?", "vn": "Tiếng Trung của 'hâm nóng' là gì?"}, "options": [{"zh": "加熱", "py": "jiā rè"}, {"zh": "結帳", "py": "jié zhàng"}, {"zh": "袋子", "py": "dài zi"}, {"zh": "發票", "py": "fā piào"}], "answer": 0}, {"id": 51, "topic": "超商生活", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'kantong / tas'?", "ph": "Ano ang Mandarin para sa 'bag / supot'?", "vn": "Tiếng Trung của 'cái túi' là gì?"}, "options": [{"zh": "袋子", "py": "dài zi"}, {"zh": "加熱", "py": "jiā rè"}, {"zh": "結帳", "py": "jié zhàng"}, {"zh": "發票", "py": "fā piào"}], "answer": 0}, {"id": 52, "topic": "超商生活", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：ATM 提款機", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "提款機", "py": "tí kuǎn jī"}, {"zh": "影印機", "py": "yǐng yìn jī"}, {"zh": "咖啡機", "py": "kā fēi jī"}, {"zh": "洗衣機", "py": "xǐ yī jī"}], "answer": 0}, {"id": 53, "topic": "超商生活", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'toilet'?", "ph": "Ano ang Mandarin para sa 'banyo / CR'?", "vn": "Tiếng Trung của 'nhà vệ sinh' là gì?"}, "options": [{"zh": "廁所", "py": "cè suǒ"}, {"zh": "結帳", "py": "jié zhàng"}, {"zh": "袋子", "py": "dài zi"}, {"zh": "發票", "py": "fā piào"}], "answer": 0}, {"id": 54, "topic": "超商生活", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'struk / kwitansi'?", "ph": "Ano ang Mandarin para sa 'resibo'?", "vn": "Tiếng Trung của 'hóa đơn' là gì?"}, "options": [{"zh": "發票", "py": "fā piào"}, {"zh": "袋子", "py": "dài zi"}, {"zh": "加熱", "py": "jiā rè"}, {"zh": "結帳", "py": "jié zhàng"}], "answer": 0}, {"id": 55, "topic": "超商生活", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'bayar di kasir'?", "ph": "Ano ang Mandarin para sa 'magbayad sa cashier'?", "vn": "Tiếng Trung của 'thanh toán' là gì?"}, "options": [{"zh": "結帳", "py": "jié zhàng"}, {"zh": "加熱", "py": "jiā rè"}, {"zh": "袋子", "py": "dài zi"}, {"zh": "發票", "py": "fā piào"}], "answer": 0}, {"id": 56, "topic": "超商生活", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：微波食品被加熱", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "加熱", "py": "jiā rè"}, {"zh": "結帳", "py": "jié zhàng"}, {"zh": "洗衣服", "py": "xǐ yī fú"}, {"zh": "寄信", "py": "jì xìn"}], "answer": 0}, {"id": 57, "topic": "生活常用詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'makan'?", "ph": "Ano ang Mandarin para sa 'kumain'?", "vn": "Tiếng Trung của 'ăn cơm' là gì?"}, "options": [{"zh": "吃飯", "py": "chī fàn"}, {"zh": "喝水", "py": "hē shuǐ"}, {"zh": "睡覺", "py": "shuì jiào"}, {"zh": "洗澡", "py": "xǐ zǎo"}], "answer": 0}, {"id": 58, "topic": "生活常用詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'minum air'?", "ph": "Ano ang Mandarin para sa 'uminom ng tubig'?", "vn": "Tiếng Trung của 'uống nước' là gì?"}, "options": [{"zh": "吃飯", "py": "chī fàn"}, {"zh": "喝水", "py": "hē shuǐ"}, {"zh": "睡覺", "py": "shuì jiào"}, {"zh": "洗澡", "py": "xǐ zǎo"}], "answer": 1}, {"id": 59, "topic": "生活常用詞", "difficulty": "簡單", "qtype": "看圖選詞", "media": "🖼️圖：一個人在睡覺", "prompt": {"id": "Apa bahasa Mandarin untuk gambar ini?", "ph": "Ano ang Mandarin para sa larawang ito?", "vn": "Tiếng Trung của hình này là gì?"}, "options": [{"zh": "睡覺", "py": "shuì jiào"}, {"zh": "吃飯", "py": "chī fàn"}, {"zh": "喝水", "py": "hē shuǐ"}, {"zh": "洗澡", "py": "xǐ zǎo"}], "answer": 0}, {"id": 60, "topic": "生活常用詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'minum obat'?", "ph": "Ano ang Mandarin para sa 'uminom ng gamot'?", "vn": "Tiếng Trung của 'uống thuốc' là gì?"}, "options": [{"zh": "吃藥", "py": "chī yào"}, {"zh": "吃飯", "py": "chī fàn"}, {"zh": "喝水", "py": "hē shuǐ"}, {"zh": "洗澡", "py": "xǐ zǎo"}], "answer": 0}, {"id": 61, "topic": "生活常用詞", "difficulty": "簡單", "qtype": "聽音選詞", "media": "🔊播放「休息」發音", "prompt": {"id": "Kata apa yang kamu dengar?", "ph": "Anong salita ang narinig mo?", "vn": "Bạn vừa nghe từ nào?"}, "options": [{"zh": "休息", "py": "xiū xi"}, {"zh": "散步", "py": "sàn bù"}, {"zh": "運動", "py": "yùn dòng"}, {"zh": "工作", "py": "gōng zuò"}], "answer": 0}, {"id": 62, "topic": "生活常用詞", "difficulty": "簡單", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'jalan-jalan'?", "ph": "Ano ang Mandarin para sa 'maglakad-lakad'?", "vn": "Tiếng Trung của 'đi dạo' là gì?"}, "options": [{"zh": "散步", "py": "sàn bù"}, {"zh": "休息", "py": "xiū xi"}, {"zh": "運動", "py": "yùn dòng"}, {"zh": "工作", "py": "gōng zuò"}], "answer": 0}, {"id": 63, "topic": "生活常用詞", "difficulty": "普通", "qtype": "文字題", "media": "-", "prompt": {"id": "Apa bahasa Mandarin dari 'merasa tidak enak badan'?", "ph": "Ano ang Mandarin para sa 'hindi maganda ang pakiramdam'?", "vn": "Tiếng Trung của 'cảm thấy không khỏe' là gì?"}, "options": [{"zh": "不舒服", "py": "bù shū fu"}, {"zh": "很開心", "py": "hěn kāi xīn"}, {"zh": "很累", "py": "hěn lèi"}, {"zh": "很餓", "py": "hěn è"}], "answer": 0}];
+
+const I18N = {
+  id: {
+    introTitle: "Tantangan Bahasa Mandarin",
+    introTagline: "Tangkap Ikan di Pasar Malam",
+    startBtn: "▶️ Mulai Bermain",
+    imagePrompt: "Apa bahasa Mandarin untuk gambar ini?",
+    listenPrompt: "Kata apa yang kamu dengar?",
+    tapToListen: "Ketuk untuk mendengar",
+    cta: "Download Aplikasi One-Forty, Belajar Bahasa Mandarin GRATIS!",
+    replay: "Main lagi",
+    score: "poin",
+    quitConfirm: "Yakin mau keluar? Skor tidak akan disimpan.",
+    tutorialHint: "Ketuk untuk memilih jawaban",
+    leaderboardTitle: "🏅 Papan Peringkat",
+  },
+  ph: {
+    introTitle: "Hamon sa Mandarin",
+    introTagline: "Pangisda sa Night Market",
+    startBtn: "▶️ Simulan ang Laro",
+    imagePrompt: "Ano ang Mandarin para sa larawang ito?",
+    listenPrompt: "Anong salita ang narinig mo?",
+    tapToListen: "Pindutin para makinig",
+    cta: "I-download ang One-Forty App, mag-aral ng Mandarin nang LIBRE!",
+    replay: "Maglaro ulit",
+    score: "puntos",
+    quitConfirm: "Sigurado ka bang aalis? Hindi masesave ang iyong score.",
+    tutorialHint: "Pindutin para pumili ng sagot",
+    leaderboardTitle: "🏅 Listahan ng Pinakamataas na Score",
+  },
+  vn: {
+    introTitle: "Thử Thách Tiếng Trung",
+    introTagline: "Vớt Cá Chợ Đêm",
+    startBtn: "▶️ Bắt Đầu Chơi",
+    imagePrompt: "Tiếng Trung của hình này là gì?",
+    listenPrompt: "Bạn vừa nghe từ nào?",
+    tapToListen: "Nhấn để nghe",
+    cta: "Tải ứng dụng One-Forty, học tiếng Trung Miễn phí!",
+    replay: "Chơi lại",
+    score: "điểm",
+    quitConfirm: "Bạn có chắc muốn thoát? Điểm số sẽ không được lưu.",
+    tutorialHint: "Nhấn để chọn câu trả lời",
+    leaderboardTitle: "🏅 Bảng Xếp Hạng",
+  }
+};
+
+let state = {
+  lang: null,
+  pool: [],
+  index: 0,
+  score: 0,
+  lives: 3,
+  total: 10,
+  startTime: null,
+  timerInterval: null,
+  durationSec: 0,
+  correctCount: 0,
+  bgmPlaying: false,
+  bgmTimer: null,
+};
+
+function getDeviceId() {
+  let id = localStorage.getItem('of_device_id');
+  if (!id) {
+    id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('of_device_id', id);
+  }
+  return id;
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function startTimer() {
+  state.startTime = Date.now();
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+    const timerEl = document.getElementById('timer');
+    if (timerEl) timerEl.textContent = '⏱️ ' + formatTime(elapsed);
+  }, 1000);
+}
+
+function stopTimer() {
+  if (state.timerInterval) {
+    clearInterval(state.timerInterval);
+    state.timerInterval = null;
+  }
+  state.durationSec = state.startTime ? Math.floor((Date.now() - state.startTime) / 1000) : 0;
+}
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildPool() {
+  const easyPool = QUESTIONS.filter(q => q.difficulty === '簡單');
+  const firstQ = shuffle(easyPool)[0];
+  const rest = shuffle(QUESTIONS.filter(q => q.id !== firstQ.id)).slice(0, 9);
+  return [firstQ, ...rest];
+}
+
+document.querySelectorAll('.lang-btn[data-lang]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    playClick();
+    state.lang = btn.dataset.lang;
+    showIntro();
+  });
+});
+
+document.getElementById('sound-toggle').addEventListener('click', toggleSound);
+updateSoundIcon();
+
+function showIntro() {
+  const t = I18N[state.lang];
+  document.getElementById('intro-title').textContent = t.introTitle;
+  document.getElementById('intro-tagline').textContent = t.introTagline;
+  document.getElementById('start-btn').textContent = t.startBtn;
+  show('screen-intro');
+}
+
+document.getElementById('start-btn').addEventListener('click', () => { playClick(); startGame(); });
+
+function startGame() {
+  state.pool = buildPool();
+  state.index = 0;
+  state.score = 0;
+  state.lives = 3;
+  state.correctCount = 0;
+  show('screen-game');
+  renderQuestion();
+  startTimer();
+  startBGM();
+}
+
+// ---- 音效（用 Web Audio 即時合成，不需要額外音檔）----
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function isSoundOn() {
+  return localStorage.getItem('of_sound_muted') !== '1';
+}
+
+function tone(freq, startOffset, duration, type, gainPeak) {
+  const ctx = getAudioCtx();
+  if (!ctx || !isSoundOn()) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  const t0 = ctx.currentTime + startOffset;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(gainPeak || 0.15, t0 + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + duration + 0.02);
+}
+
+function playClick() { tone(520, 0, 0.08, 'square', 0.06); }
+function playCorrect() { tone(660, 0, 0.14, 'sine', 0.12); tone(880, 0.1, 0.18, 'sine', 0.12); }
+function playWrong() { tone(220, 0, 0.22, 'sawtooth', 0.1); }
+function playWin() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, 0.18, 'sine', 0.1)); }
+
+// ---- 背景音樂：輕快的五聲音階小旋律，即時合成、不斷循環 ----
+const BGM_NOTES = [523.25, 659.25, 587.33, 783.99, 659.25, 880.00, 783.99, 659.25];
+const BGM_NOTE_MS = 300;
+function playBgmNote(i) {
+  if (!state.bgmPlaying) return;
+  tone(BGM_NOTES[i % BGM_NOTES.length], 0, 0.26, 'triangle', 0.035);
+  state.bgmTimer = setTimeout(() => playBgmNote(i + 1), BGM_NOTE_MS);
+}
+function startBGM() {
+  if (state.bgmPlaying) return;
+  state.bgmPlaying = true;
+  playBgmNote(0);
+}
+function stopBGM() {
+  state.bgmPlaying = false;
+  if (state.bgmTimer) { clearTimeout(state.bgmTimer); state.bgmTimer = null; }
+}
+
+function toggleSound() {
+  const muted = !isSoundOn();
+  localStorage.setItem('of_sound_muted', muted ? '0' : '1');
+  updateSoundIcon();
+  if (!muted) playClick();
+}
+
+function updateSoundIcon() {
+  const btn = document.getElementById('sound-toggle');
+  if (btn) btn.textContent = isSoundOn() ? '🔊' : '🔇';
+}
+
+function speak(text) {
+  try {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'zh-TW';
+    utter.rate = 0.85;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  } catch (e) { console.warn('TTS not available', e); }
+}
+
+function renderQuestion() {
+  const q = state.pool[state.index];
+  const t = I18N[state.lang];
+  document.getElementById('lives').textContent = '🪣'.repeat(state.lives) + '　'.repeat(3 - state.lives);
+  document.getElementById('score').textContent = '⭐ ' + state.score;
+  document.getElementById('progress').textContent = `Q${state.index + 1}/${state.total}`;
+  document.getElementById('footer-note').textContent = q.media && q.media !== '-' ? '素材備註（開發用）：' + q.media : '';
+
+  const promptEl = document.getElementById('prompt');
+  const mediaSlot = document.getElementById('media-slot');
+  mediaSlot.innerHTML = '';
+
+  if (q.qtype === '看圖選詞') {
+    promptEl.textContent = t.imagePrompt;
+    const box = document.createElement('div');
+    box.className = 'media-box image';
+    box.innerHTML = '🖼️<br>（圖片佔位，之後替換）';
+    mediaSlot.appendChild(box);
+  } else if (q.qtype === '聽音選詞') {
+    promptEl.textContent = t.listenPrompt;
+    const box = document.createElement('div');
+    box.className = 'media-box audio';
+    box.innerHTML = `<span class="speaker">🔊</span><span>${t.tapToListen}</span>`;
+    box.addEventListener('click', () => speak(q.options[q.answer].zh));
+    mediaSlot.appendChild(box);
+    // 自動播放一次
+    setTimeout(() => speak(q.options[q.answer].zh), 300);
+  } else {
+    promptEl.textContent = q.prompt[state.lang];
+  }
+
+  const optsEl = document.getElementById('options');
+  optsEl.innerHTML = '';
+  const shuffledOptions = shuffle(q.options.map((o, i) => ({ ...o, isCorrect: i === q.answer })));
+  shuffledOptions.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = `<span class="fish-icon">🐟</span><span>${opt.zh}</span><span class="py">${opt.py}</span>`;
+    b.addEventListener('click', () => handleAnswer(b, opt.isCorrect, optsEl));
+    optsEl.appendChild(b);
+  });
+
+  maybeShowTutorialHint(t);
+}
+
+function maybeShowTutorialHint(t) {
+  const seen = localStorage.getItem('of_game_tutorial_seen');
+  if (seen || state.index !== 0) return;
+  const pond = document.querySelector('.pond');
+  const hint = document.createElement('div');
+  hint.className = 'tutorial-hint';
+  hint.innerHTML = `<span class="hand">👆</span><span class="hint-text">${t.tutorialHint}</span>`;
+  pond.appendChild(hint);
+  const dismiss = () => {
+    hint.remove();
+    localStorage.setItem('of_game_tutorial_seen', '1');
+  };
+  document.getElementById('options').addEventListener('click', dismiss, { once: true });
+  setTimeout(dismiss, 4000);
+}
+
+function handleAnswer(btn, isCorrect, optsEl) {
+  optsEl.querySelectorAll('.opt').forEach(o => o.disabled = true);
+  const net = document.createElement('span');
+  net.className = 'net-scoop';
+  net.textContent = '🥅';
+  btn.appendChild(net);
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (isCorrect) {
+    state.score += 10;
+    state.correctCount += 1;
+    playCorrect();
+  } else {
+    state.lives -= 1;
+    playWrong();
+  }
+  setTimeout(() => {
+    if (state.lives <= 0) {
+      endGame();
+      return;
+    }
+    state.index += 1;
+    if (state.index >= state.total) {
+      endGame();
+      return;
+    }
+    renderQuestion();
+  }, 700);
+}
+
+function endGame() {
+  stopTimer();
+  stopBGM();
+  const t = I18N[state.lang];
+  const result = state.lives <= 0 ? 'lost' : 'finished';
+  document.getElementById('final-score').textContent = state.score;
+  document.getElementById('final-label').textContent = t.score;
+  document.getElementById('cta-btn').textContent = '📱 ' + t.cta;
+  document.getElementById('replay-btn').textContent = '🔄 ' + t.replay;
+  document.getElementById('leaderboard').innerHTML = '';
+  show('screen-end');
+  if (result === 'finished') playWin();
+
+  submitResult({
+    deviceId: getDeviceId(),
+    lang: state.lang,
+    score: state.score,
+    correctCount: state.correctCount,
+    totalAnswered: state.index + 1,
+    durationSec: state.durationSec,
+    result: result,
+  });
+  fetchLeaderboard(t);
+}
+
+function submitResult(payload) {
+  if (!API_URL) return;
+  // Apps Script Web App 不支援 CORS 預檢，用 text/plain 送 body 可以避開瀏覽器的 preflight 檢查
+  fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  }).catch(err => console.warn('送出紀錄失敗（不影響遊戲本身）', err));
+}
+
+function fetchLeaderboard(t) {
+  if (!API_URL) return;
+  const el = document.getElementById('leaderboard');
+  fetch(`${API_URL}?action=leaderboard`)
+    .then(res => res.json())
+    .then(json => {
+      if (!json.ok || !json.data || !json.data.length) return;
+      const myId = getDeviceId().slice(-6);
+      const rows = json.data.map((row, i) => `
+        <div class="leaderboard-row ${row.deviceId === myId ? 'me' : ''}">
+          <span class="rank">${i + 1}</span>
+          <span class="id">${row.deviceId}</span>
+          <span class="pts">${row.score}</span>
+        </div>`).join('');
+      el.innerHTML = `<div class="leaderboard-title">${t.leaderboardTitle}</div>${rows}`;
+    })
+    .catch(err => console.warn('排行榜載入失敗（不影響遊戲本身）', err));
+}
+
+document.getElementById('replay-btn').addEventListener('click', () => { playClick(); startGame(); });
+document.getElementById('back-link').addEventListener('click', () => show('screen-lang'));
+document.getElementById('intro-back-link').addEventListener('click', () => show('screen-lang'));
+document.getElementById('quit-btn').addEventListener('click', () => {
+  if (confirm(I18N[state.lang].quitConfirm)) {
+    stopTimer();
+    stopBGM();
+    show('screen-lang');
+  }
+});
+document.getElementById('cta-btn').addEventListener('click', () => {
+  alert('這裡之後串上 One-Forty App 下載連結');
+});
+</script>
+</body>
+</html>
