@@ -140,6 +140,10 @@
   .leaderboard-row .time { opacity:0.7; font-size:11px; color:#10C5DD; }
   .leaderboard-row .pts { font-weight:bold; min-width:32px; text-align:right; }
   .leaderboard-row.me { background:rgba(252,200,14,0.18); border:1px solid rgba(252,200,14,0.5); }
+  .my-result {
+    text-align:center; font-size:12.5px; font-weight:bold; color:#14314C;
+    background:#FCC80E; border-radius:10px; padding:8px 10px; margin-bottom:8px;
+  }
   .back-link { text-align:center; font-size:12px; opacity:0.6; margin-top:14px; cursor:pointer; text-decoration:underline; }
   .home-btn {
     width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.12);
@@ -241,6 +245,7 @@ const I18N = {
       { icon: "⭐", text: "Benar +10 poin, salah -1 nyawa" },
       { icon: "🏆", text: "Selesaikan 10 soal untuk lihat skormu" },
     ],
+    myResultLabel: "Hasil kamu",
   },
   ph: {
     introTitle: "Hamon sa Mandarin",
@@ -261,6 +266,7 @@ const I18N = {
       { icon: "⭐", text: "Tama +10 puntos, mali -1 buhay" },
       { icon: "🏆", text: "Tapusin ang 10 tanong para makita ang score mo" },
     ],
+    myResultLabel: "Resulta mo",
   },
   vn: {
     introTitle: "Thử Thách Tiếng Trung",
@@ -281,6 +287,7 @@ const I18N = {
       { icon: "⭐", text: "Đúng +10 điểm, sai -1 mạng" },
       { icon: "🏆", text: "Hoàn thành 10 câu để xem điểm của bạn" },
     ],
+    myResultLabel: "Kết quả của bạn",
   }
 };
 
@@ -622,19 +629,34 @@ function submitResult(payload) {
 function fetchLeaderboard(t) {
   if (!API_URL) return;
   const el = document.getElementById('leaderboard');
-  fetch(`${API_URL}?action=leaderboard`)
+  const url = `${API_URL}?action=leaderboard&score=${state.score}&duration=${state.durationSec}`;
+  fetch(url)
     .then(res => res.json())
     .then(json => {
-      if (!json.ok || !json.data || !json.data.length) return;
+      if (!json.ok) return;
       const myId = getDeviceId().slice(-6);
-      const rows = json.data.map((row, i) => `
+      const rows = (json.data || []).map((row, i) => `
         <div class="leaderboard-row ${row.deviceId === myId ? 'me' : ''}">
           <span class="rank">${i + 1}</span>
           <span class="id">${row.deviceId}</span>
           <span class="time">⏱️ ${formatTime(row.durationSec || 0)}</span>
           <span class="pts">${row.score}</span>
         </div>`).join('');
-      el.innerHTML = `<div class="leaderboard-title">${t.leaderboardTitle}</div>${rows}`;
+
+      let myResultHtml = '';
+      if (json.me) {
+        const inTop10 = json.me.rank <= 10;
+        myResultHtml = `
+          <div class="my-result">
+            ${t.myResultLabel}：#${json.me.rank} / ${json.totalPlayers}
+            ⭐ ${json.me.score}　⏱️ ${formatTime(json.me.durationSec)}
+            ${inTop10 ? ' 🎉' : ''}
+          </div>`;
+      }
+
+      el.innerHTML = rows
+        ? `<div class="leaderboard-title">${t.leaderboardTitle}</div>${myResultHtml}${rows}`
+        : myResultHtml;
     })
     .catch(err => console.warn('排行榜載入失敗（不影響遊戲本身）', err));
 }
