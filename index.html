@@ -2,19 +2,23 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>夜市撈魚｜One-Forty 中文小遊戲（骨架原型）</title>
 <style>
   * { box-sizing: border-box; margin:0; padding:0; }
+  html, body { height:100%; overscroll-behavior:none; }
   body {
     font-family: "PingFang TC","Microsoft JhengHei","Noto Sans TC",Arial,sans-serif;
     background: linear-gradient(180deg,#1a2a6c,#0f3460 60%,#0a1f3d);
-    min-height: 100vh; color:#fff;
+    min-height: 100vh;
+    min-height: 100dvh;
+    color:#fff;
     display:flex; align-items:center; justify-content:center;
-    padding: 16px;
+    padding: 12px;
+    overflow-y:auto;
   }
-  .app { width:100%; max-width:420px; }
-  .screen { position:relative; display:none; background:rgba(255,255,255,0.06); border-radius:20px; padding:24px 20px; box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+  .app { width:100%; max-width:420px; max-height:100dvh; }
+  .screen { position:relative; display:none; background:rgba(255,255,255,0.06); border-radius:20px; padding:18px 18px; box-shadow:0 10px 40px rgba(0,0,0,0.4); max-height:calc(100dvh - 24px); overflow-y:auto; }
   .quit-btn {
     position:absolute; top:14px; right:14px; width:28px; height:28px; border-radius:50%;
     background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center;
@@ -22,10 +26,10 @@
   }
   .quit-btn:active { background:rgba(255,255,255,0.3); }
   .screen.active { display:block; }
-  h1 { font-size:22px; text-align:center; margin-bottom:6px; }
-  .sub { text-align:center; opacity:0.8; font-size:13px; margin-bottom:20px; }
-  .hero-icon { text-align:center; font-size:64px; margin-bottom:18px; }
-  .brand-logo { display:block; margin:0 auto 18px; width:150px; height:auto; }
+  h1 { font-size:20px; text-align:center; margin-bottom:5px; }
+  .sub { text-align:center; opacity:0.8; font-size:12px; margin-bottom:14px; }
+  .hero-icon { text-align:center; font-size:44px; margin-bottom:10px; }
+  .brand-logo { display:block; margin:0 auto 12px; width:110px; height:auto; }
   .brand-logo.small { width:90px; margin:18px auto 4px; opacity:0.9; }
   .lang-btn {
     width:100%; padding:16px; margin-bottom:12px; border:none; border-radius:14px;
@@ -33,18 +37,18 @@
     display:flex; align-items:center; gap:10px; justify-content:center;
   }
   .lang-btn:active { transform: scale(0.97); }
-  .hud { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:14px; }
+  .hud { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:14px; }
   .hud .lives { color:#ff6b6b; letter-spacing:2px; }
   .hud .score { color:#FFB81C; font-weight:bold; }
   .progress { text-align:center; font-size:12px; opacity:0.7; margin-bottom:10px; }
-  .timer { text-align:center; font-size:12px; opacity:0.75; margin-bottom:10px; color:#10C5DD; font-weight:bold; letter-spacing:1px; }
-  .prompt { background:rgba(255,255,255,0.08); border-radius:14px; padding:16px; text-align:center; font-size:17px; line-height:1.5; margin-bottom:16px; min-height:60px; display:flex; align-items:center; justify-content:center; }
-  .media-box { width:100%; height:120px; border-radius:14px; margin-bottom:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-size:13px; color:#1a2a6c; font-weight:bold; text-align:center; padding:8px; }
+  .timer { text-align:center; font-size:11px; opacity:0.75; margin-bottom:6px; color:#10C5DD; font-weight:bold; letter-spacing:1px; }
+  .prompt { background:rgba(255,255,255,0.08); border-radius:14px; padding:12px; text-align:center; font-size:16px; line-height:1.4; margin-bottom:10px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+  .media-box { width:100%; height:88px; border-radius:14px; margin-bottom:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:12px; color:#1a2a6c; font-weight:bold; text-align:center; padding:6px; }
   .media-box.image { background: repeating-linear-gradient(45deg,#a8d8ff,#a8d8ff 10px,#8fc9ff 10px,#8fc9ff 20px); }
   .media-box.audio { background:#ffe0a3; cursor:pointer; }
   .media-box.audio:active { transform: scale(0.98); }
   .speaker { font-size:36px; }
-  .pond { position:relative; background:linear-gradient(180deg,#1c6ea4,#0e4d78); border-radius:16px; padding:14px 10px 10px; margin-bottom:6px; overflow:hidden; }
+  .pond { position:relative; background:linear-gradient(180deg,#1c6ea4,#0e4d78); border-radius:16px; padding:10px 8px 8px; margin-bottom:4px; overflow:hidden; }
   .pond-fish { position:absolute; font-size:16px; opacity:0.35; animation: swim-across linear infinite; pointer-events:none; }
   @keyframes swim-across {
     0% { transform: translateX(-30px) scaleX(1); }
@@ -56,7 +60,7 @@
   .options { display:grid; grid-template-columns:1fr 1fr; gap:10px; position:relative; z-index:2; }
   .opt {
     background:#ffffff; color:#1a2a6c; border:none; border-radius:40% 40% 45% 45% / 60% 60% 40% 40%;
-    padding:16px 8px; font-size:16px; font-weight:bold; cursor:pointer;
+    padding:12px 6px; font-size:15px; font-weight:bold; cursor:pointer;
     display:flex; flex-direction:column; align-items:center; gap:2px;
     animation: bob 2.4s ease-in-out infinite;
     box-shadow: 0 4px 10px rgba(0,0,0,0.25);
@@ -73,7 +77,22 @@
   .opt .py { font-size:11px; font-weight:normal; opacity:0.65; }
   .opt.correct { background:#8fd694; animation:none; }
   .opt.wrong { background:#ff8b8b; animation:none; }
+  .opt.reveal-correct { background:#8fd694; animation:none; box-shadow: 0 0 0 3px #FFB81C; }
   .opt:disabled { cursor:default; }
+  .streak-toast {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.7);
+    background:#FFB81C; color:#14314C; font-weight:bold; font-size:14px;
+    padding:10px 18px; border-radius:20px; box-shadow:0 6px 20px rgba(0,0,0,0.35);
+    z-index:30; opacity:0; text-align:center; white-space:nowrap;
+    animation: streak-pop 1.4s ease-out forwards;
+  }
+  @keyframes streak-pop {
+    0% { opacity:0; transform:translate(-50%,-50%) scale(0.6); }
+    15% { opacity:1; transform:translate(-50%,-50%) scale(1.08); }
+    25% { transform:translate(-50%,-50%) scale(1); }
+    80% { opacity:1; }
+    100% { opacity:0; transform:translate(-50%,-60%) scale(0.95); }
+  }
   .tutorial-hint {
     position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
     display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -97,7 +116,7 @@
     40% { transform: translate(-50%,-50%) scale(1.3); opacity:1; }
     100% { transform: translate(-50%,-50%) scale(1); opacity:0; }
   }
-  .footer-note { text-align:center; font-size:11px; opacity:0.5; margin-top:16px; }
+  .footer-note { text-align:center; font-size:10px; opacity:0.5; margin-top:8px; }
   .trophy { font-size:56px; text-align:center; margin-bottom:8px; }
   .final-score { text-align:center; font-size:32px; font-weight:bold; color:#FFB81C; margin-bottom:4px; }
   .final-label { text-align:center; font-size:13px; opacity:0.8; margin-bottom:22px; }
@@ -109,7 +128,7 @@
     width:100%; padding:14px; border:2px solid rgba(255,255,255,0.4); border-radius:14px; background:transparent; color:#fff;
     font-size:14px; cursor:pointer;
   }
-  .lantern { text-align:center; font-size:24px; margin-bottom:8px; letter-spacing:8px; }
+  .lantern { text-align:center; font-size:20px; margin-bottom:4px; letter-spacing:8px; }
   .leaderboard { margin-top:16px; }
   .leaderboard-title { text-align:center; font-size:12px; opacity:0.7; margin-bottom:8px; letter-spacing:1px; }
   .leaderboard-row {
@@ -202,6 +221,7 @@ const I18N = {
     quitConfirm: "Yakin mau keluar? Skor tidak akan disimpan.",
     tutorialHint: "Ketuk untuk memilih jawaban",
     leaderboardTitle: "🏅 Papan Peringkat",
+    streakMsg: "🔥 Hebat! 3 jawaban benar berturut-turut!",
   },
   ph: {
     introTitle: "Hamon sa Mandarin",
@@ -216,6 +236,7 @@ const I18N = {
     quitConfirm: "Sigurado ka bang aalis? Hindi masesave ang iyong score.",
     tutorialHint: "Pindutin para pumili ng sagot",
     leaderboardTitle: "🏅 Listahan ng Pinakamataas na Score",
+    streakMsg: "🔥 Ang galing! 3 magkakasunod na tamang sagot!",
   },
   vn: {
     introTitle: "Thử Thách Tiếng Trung",
@@ -230,6 +251,7 @@ const I18N = {
     quitConfirm: "Bạn có chắc muốn thoát? Điểm số sẽ không được lưu.",
     tutorialHint: "Nhấn để chọn câu trả lời",
     leaderboardTitle: "🏅 Bảng Xếp Hạng",
+    streakMsg: "🔥 Tuyệt vời! Trả lời đúng 3 câu liên tiếp!",
   }
 };
 
@@ -246,6 +268,7 @@ let state = {
   correctCount: 0,
   bgmPlaying: false,
   bgmTimer: null,
+  streak: 0,
 };
 
 function getDeviceId() {
@@ -329,6 +352,7 @@ function startGame() {
   state.score = 0;
   state.lives = 3;
   state.correctCount = 0;
+  state.streak = 0;
   show('screen-game');
   renderQuestion();
   startTimer();
@@ -448,6 +472,7 @@ function renderQuestion() {
   shuffledOptions.forEach(opt => {
     const b = document.createElement('button');
     b.className = 'opt';
+    b.dataset.correct = opt.isCorrect ? '1' : '0';
     b.innerHTML = `<span class="fish-icon">🐟</span><span>${opt.zh}</span><span class="py">${opt.py}</span>`;
     b.addEventListener('click', () => handleAnswer(b, opt.isCorrect, optsEl));
     optsEl.appendChild(b);
@@ -473,20 +498,36 @@ function maybeShowTutorialHint(t) {
 }
 
 function handleAnswer(btn, isCorrect, optsEl) {
+  const t = I18N[state.lang];
   optsEl.querySelectorAll('.opt').forEach(o => o.disabled = true);
   const net = document.createElement('span');
   net.className = 'net-scoop';
   net.textContent = '🥅';
   btn.appendChild(net);
   btn.classList.add(isCorrect ? 'correct' : 'wrong');
+
+  let delay = 700;
   if (isCorrect) {
     state.score += 10;
     state.correctCount += 1;
+    state.streak += 1;
     playCorrect();
+    if (state.streak > 0 && state.streak % 3 === 0) {
+      state.score += 5;
+      showStreakToast(t.streakMsg);
+      delay = 1500;
+    }
   } else {
     state.lives -= 1;
+    state.streak = 0;
     playWrong();
+    // 答錯時亮出正確答案，讓玩家學到東西再進下一題
+    const correctBtn = optsEl.querySelector('.opt[data-correct="1"]');
+    if (correctBtn && correctBtn !== btn) correctBtn.classList.add('reveal-correct');
+    delay = 1400;
   }
+  document.getElementById('score').textContent = '⭐ ' + state.score;
+  document.getElementById('lives').textContent = '🪣'.repeat(state.lives) + '　'.repeat(3 - state.lives);
   setTimeout(() => {
     if (state.lives <= 0) {
       endGame();
@@ -498,7 +539,17 @@ function handleAnswer(btn, isCorrect, optsEl) {
       return;
     }
     renderQuestion();
-  }, 700);
+  }, delay);
+}
+
+function showStreakToast(msg) {
+  const screen = document.getElementById('screen-game');
+  const toast = document.createElement('div');
+  toast.className = 'streak-toast';
+  toast.textContent = msg;
+  screen.appendChild(toast);
+  playWin();
+  setTimeout(() => toast.remove(), 1400);
 }
 
 function endGame() {
